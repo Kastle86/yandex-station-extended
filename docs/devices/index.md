@@ -28,6 +28,7 @@ Amlogic-поколениям (с поправкой на версию ядра; 
 | Модель | Кодовое имя (DT) | SoC | Статус | Страница |
 |---|---|---|---|---|
 | Станция Лайт | `Yandex Station Micro v1.2` | Amlogic AXG (A113) | ✅ подробно | [Лайт](station-lite.md) |
+| Станция Лайт 2 | `plum` | Amlogic AXG (A113X) | ✅ разобрана | [Лайт 2](station-lite2.md) |
 | Станция Мини 2 | `yandex,station-mini2` | Amlogic AXG | ✅ разобрана | [Мини 2](station-mini2.md) |
 | Станция Мини (1 пок) | `amlogic, axg` | Amlogic AXG | ✅ разобрана | [Мини](station-mini.md) |
 | Станция Миди | `yandex,cucumber-dvt2` | Amlogic A5 (A55) | ✅ разобрана | [Миди](station-midi.md) |
