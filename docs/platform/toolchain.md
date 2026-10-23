@@ -88,13 +88,17 @@ zig objcopy --strip-all build/my_program
 
 ## 📦 Уже проверенные и работающие утилиты
 
-| Программа | Архитектура | Способ сборки | Примечания |
+Все готовые бинарники уже скомпилированы и выложены в репозиторий в папку [`contrib/bin/`](https://github.com/Marker284/yandex-station-extended/tree/main/contrib/bin):
+
+| Программа | Архитектура | Ссылка на бинарник | Примечания |
 |---|---|---|---|
-| **Fastfetch** | `aarch64` | `zig cc` + CMake | Отключены Vulkan, Wayland, X11. Работает быстро, выводит ASCII-лого. |
-| **Dropbear (SSH)** | `aarch64` | `zig cc` + configure | Патч на пустой пароль, статика ~400 КБ. |
-| **FFmpeg (lite)** | `aarch64` | `musl-cross-make` | Минимальная статика под аудио (MP3/AAC/OGG/Opus). |
+| **Fastfetch** | `aarch64` | [📥 Скачать fastfetch](https://github.com/Marker284/yandex-station-extended/raw/main/contrib/bin/fastfetch) | Информер с цветным логотипом Алисы и датчиком температуры CPU. |
+| **Dropbear (SSH)** | `aarch64` | [📥 Скачать dropbear](https://github.com/Marker284/yandex-station-extended/raw/main/contrib/bin/dropbear) | Автономный SSH-сервер со статическим musl. |
+| **Dropbearkey** | `aarch64` | [📥 Скачать dropbearkey](https://github.com/Marker284/yandex-station-extended/raw/main/contrib/bin/dropbearkey) | Генератор ED25519/RSA хост-ключей. |
+| **Nano** | `aarch64` | [📥 Скачать nano](https://github.com/Marker284/yandex-station-extended/raw/main/contrib/bin/nano) | Удобный консольный текстовый редактор. |
+| **Zsh** | `aarch64` | [📥 Скачать zsh](https://github.com/Marker284/yandex-station-extended/raw/main/contrib/bin/zsh-5.9.2-aarch64-musl) | Мощная командная оболочка Zsh (5.9.2). |
 | **Node.js** | `armv7l` (32-bit) | Официальный тарбол | Версия **18.20.5** (последняя под glibc 2.30). |
-| **htop / tmux / nano** | `aarch64` / `armv7` | Установка через `yse` | Ставятся из репозитория Entware в `/data/opt/bin`. |
+| **htop / tmux** | `aarch64` / `armv7` | Установка через `yse` | Ставятся из репозитория Entware в `/data/opt/bin`. |
 
 ---
 
@@ -113,3 +117,32 @@ adb shell /data/opt/bin/my_program
 ```
 
 Если утилите требуются собственные конфиги или базы данных, создавайте их в `/data/opt/etc/` или `/data/opt/home/`.
+
+---
+
+## 📱 Установка ADB на компьютер { #adb-install }
+<a id="adb-install"></a>
+
+Чтобы управлять колонкой с компьютера через Android Debug Bridge:
+
+=== "macOS"
+    ```sh
+    brew install android-platform-tools
+    # Проверка:
+    adb version
+    ```
+
+=== "Linux (Ubuntu / Debian / Arch)"
+    ```sh
+    # Ubuntu / Debian / Mint:
+    sudo apt install adb
+
+    # Arch Linux / Manjaro:
+    sudo pacman -S android-tools
+    ```
+
+=== "Windows"
+    1. Скачайте официальный архив: [Google SDK Platform-Tools for Windows](https://dl.google.com/android/repository/platform-tools-latest-windows.zip).
+    2. Распакуйте папку `platform-tools` (например, в `C:\platform-tools`).
+    3. Запустите командную строку (CMD или PowerShell) из этой папки и выполните `adb.exe version`.
+

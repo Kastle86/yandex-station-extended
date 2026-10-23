@@ -99,6 +99,7 @@ nav:
       - Архитектура прошивки: platform/architecture.md
       - Получение доступа: platform/access.md
       - Подписочные Станции и блокировки: platform/subscription-lock.md
+      - Раскирпичивание и восстановление: platform/unbrick.md
       - Спецификация Quasar API: platform/quasar-api.md
       - Сеть и glagol: platform/network.md
       - Сборка софта: platform/toolchain.md
@@ -108,4 +109,5 @@ nav:
       - Обзор проектов: projects.md
       - Своя LLM (ChatGPT / Claude): projects/chatgpt-proxy.md
       - AirPlay (Shairport Sync): projects/airplay.md
+      - Кастомные звуки и Chime: projects/custom-sounds.md
   - Как дополнять вики: contributing.md

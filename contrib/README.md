@@ -1,35 +1,57 @@
-# Community Tools & Scripts
+# Community Tools, Binaries & Scripts
 
-Полезные утилиты, эксплойты и скрипты автоматизации, собранные сообществом исследователей Яндекс Станций.
+Полезные утилиты, скомпилированные бинарники и скрипты автоматизации, собранные сообществом исследователей умных колонок Яндекс.
+
+Все файлы хранятся прямо в этом репозитории — их можно скачать через браузер по прямым ссылкам или напрямую с помощью `wget` / `curl` на колонку.
 
 ---
 
-## 📜 Индекс скриптов
+## 📦 Готовые статические бинарники (каталог `contrib/bin/`)
 
-### Безопасность и защита от обновлений:
-* **`yandex-noupdate.sh`** — скрипт полной блокировки OTA-обновлений, вырезания `updatesd` и подмены публичного ключа.
-* **`killswitch.sh`** — аварийный киллсвич для мгновенной изоляции колонки от облачных серверов Яндекса.
-* **`rollback.sh`** — скрипт отката изменений и восстановления заводских скриптов обновления.
-* **`yandex-station-privacy.sh`** — отключение отправки логов, телеметрии (`telemetryd`, `fluent-bitd`) и приватных метрик.
+Скомпилированы статически под архитектуру **`aarch64-linux-musl`** (работают на Станциях Лайт, Лайт 2, Мини 1, Мини 2, Мини 3, Станция 2, Миди):
+
+| Программа | Размер | Прямая ссылка на скачивание | Описание |
+|---|---|---|---|
+| **`fastfetch`** | 1.1 МБ | [Скачать fastfetch](https://github.com/Marker284/yandex-station-extended/raw/main/contrib/bin/fastfetch) | Системный информер с цветным логотипом Алисы и выводом температуры. |
+| **`dropbear`** | 2.7 МБ | [Скачать dropbear](https://github.com/Marker284/yandex-station-extended/raw/main/contrib/bin/dropbear) | Легковесный автономный SSH-сервер. |
+| **`dropbearkey`**| 2.3 МБ | [Скачать dropbearkey](https://github.com/Marker284/yandex-station-extended/raw/main/contrib/bin/dropbearkey) | Генератор ED25519/RSA хост-ключей для Dropbear. |
+| **`nano`** | 325 КБ | [Скачать nano](https://github.com/Marker284/yandex-station-extended/raw/main/contrib/bin/nano) | Удобный консольный текстовый редактор. |
+| **`zsh`** | 3.6 МБ | [Скачать zsh](https://github.com/Marker284/yandex-station-extended/raw/main/contrib/bin/zsh-5.9.2-aarch64-musl) | Мощная командная оболочка Zsh (версия 5.9.2). |
+
+---
+
+## 🎁 Готовые пакеты и медиа (каталог `contrib/packages/`)
+
+| Файл | Размер | Прямая ссылка | Описание |
+|---|---|---|---|
+| **`mac-startup-chime-t2.mp3`** | 63 КБ | [Скачать MP3](https://github.com/Marker284/yandex-station-extended/raw/main/contrib/packages/mac-startup-chime-t2.mp3) | Легендарный звук запуска Apple Mac (чип T2) для автозагрузки Станции. |
+| **`mini2-ssh.tar.gz`** | 7.6 МБ | [Скачать архив](https://github.com/Marker284/yandex-station-extended/raw/main/contrib/packages/mini2-ssh.tar.gz) | Готовый самораспаковывающийся архив SSH для Станции Мини 2. |
+| **`librespot-micro-installer.zip`**| 2.3 МБ | [Скачать zip](https://github.com/Marker284/yandex-station-extended/raw/main/contrib/packages/librespot-micro-installer.zip) | Установщик клиента Spotify Connect для Станции Лайт. |
+| **`Station1_ROOT.zip`** | 2.8 МБ | [Скачать zip](https://github.com/Marker284/yandex-station-extended/raw/main/contrib/packages/Station1_ROOT.zip) | Архив инструментов рутирования для первой Станции (Allwinner). |
+
+---
+
+## 📜 Индекс скриптов автоматизации (каталог `contrib/`)
+
+### Безопасность и блокировка обновлений:
+* **[`yandex-noupdate.sh`](https://github.com/Marker284/yandex-station-extended/blob/main/contrib/yandex-noupdate.sh)** — полная блокировка OTA-обновлений, вырезание `updatesd` и подмена публичного ключа.
+* **[`killswitch.sh`](https://github.com/Marker284/yandex-station-extended/blob/main/contrib/killswitch.sh)** — аварийный киллсвич для мгновенной изоляции колонки от облачных серверов Яндекса.
+* **[`rollback.sh`](https://github.com/Marker284/yandex-station-extended/blob/main/contrib/rollback.sh)** — скрипт отката изменений и восстановления заводских файлов.
+* **[`yandex-station-privacy.sh`](https://github.com/Marker284/yandex-station-extended/blob/main/contrib/yandex-station-privacy.sh)** — отключение отправки логов и телеметрии (`telemetryd`, `fluent-bitd`).
 
 ### Доступ и ADB:
-* **`install-s97adb.sh`** — скрипт добавления демона ADB в автозагрузку через `/etc/init.d/S97adb`.
-* **`patch_boot.py`** — скрипт модификации boot-образа ядра для снятия флага `rh_unlock=0` (активация serial-консоли UART).
-* **`patch_max_adb_candidate.py`** — патчер для включения отладки на Станции Макс.
-* **`decrypt_ota.py`** — утилита для распаковки и расшифровки зашифрованных OTA-пакетов прошивки.
+* **[`install-s97adb.sh`](https://github.com/Marker284/yandex-station-extended/blob/main/contrib/install-s97adb.sh)** — добавление демона ADB в автозагрузку через `/etc/init.d/S97adb`.
+* **[`patch_boot.py`](https://github.com/Marker284/yandex-station-extended/blob/main/contrib/patch_boot.py)** — модификация boot-образа ядра для снятия флага `rh_unlock=0` (UART-консоль).
+* **[`patch_max_adb_candidate.py`](https://github.com/Marker284/yandex-station-extended/blob/main/contrib/patch_max_adb_candidate.py)** — патчер для включения отладки на Станции Макс.
+* **[`decrypt_ota.py`](https://github.com/Marker284/yandex-station-extended/blob/main/contrib/decrypt_ota.py)** — распаковка и расшифровка OTA-пакетов прошивки.
 
 ### Звук, медиа и стриминг:
-* **`yandex-station-airplay-fix.sh`** — развертывание и настройка Shairport Sync (AirPlay-приёмник) поверх ALSA с решением конфликта микширования.
-* **`spotify.sh`** — запуск легковесного Spotify Connect клиента (`librespot`) на колонке.
-* **`music.go`** / **`qstream.go`** — утилиты на Go для стриминга аудиопотоков через сокет `tcp_alsa_writer`.
-* **`mic-tap.sh`** — перехват микрофонного потока с PDM-матрицы для трансляции в Home Assistant или систему распознавания речи.
+* **[`yandex-station-airplay-fix.sh`](https://github.com/Marker284/yandex-station-extended/blob/main/contrib/yandex-station-airplay-fix.sh)** — автоустановка и фикс Shairport Sync (AirPlay 2) с решением конфликта ALSA.
+* **[`spotify.sh`](https://github.com/Marker284/yandex-station-extended/blob/main/contrib/spotify.sh)** — запуск клиента Spotify Connect (`librespot`).
+* **[`music.go`](https://github.com/Marker284/yandex-station-extended/blob/main/contrib/music.go)** / **[`qstream.go`](https://github.com/Marker284/yandex-station-extended/blob/main/contrib/qstream.go)** — стриминг звука через сокет `tcp_alsa_writer`.
+* **[`mic-tap.sh`](https://github.com/Marker284/yandex-station-extended/blob/main/contrib/mic-tap.sh)** — захват микрофонного потока с PDM-матрицы.
 
 ### Индикация и LED:
-* **`install-rgb-alice-mini2.sh`** — кастомное управление 6 RGB-зонами Станции Мини 2 (цветовые переливы, реакция на события).
-* **`smiley_editor.py`** — визуальный редактор пиксельных смайликов и анимаций для LED-экрана.
-* **`spoof_alice_pro_led.sh`** — эмуляция паттернов индикации старших моделей Станций.
-* **`ring.sh`** — прямое управление кольцевой подсветкой через `/dev/fb0` (для Станции Мини 3 `bergamot`).
-
-### Комплексные наборы:
-* **`yandex-micro-kit.sh`** — комплексный набор первичной настройки для Станции Лайт (Micro).
-* **`qsdmn.sh`** — менеджер процессов и служб стека Quasar.
+* **[`install-rgb-alice-mini2.sh`](https://github.com/Marker284/yandex-station-extended/blob/main/contrib/install-rgb-alice-mini2.sh)** — управление 6 RGB-зонами Станции Мини 2.
+* **[`smiley_editor.py`](https://github.com/Marker284/yandex-station-extended/blob/main/contrib/smiley_editor.py)** — визуальный редактор пиксельных смайликов и анимаций часов.
+* **[`ring.sh`](https://github.com/Marker284/yandex-station-extended/blob/main/contrib/ring.sh)** — прямое управление кольцевой подсветкой через `/dev/fb0` на Станции Мини 3.
