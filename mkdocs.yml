@@ -31,6 +31,8 @@ theme:
     - content.code.copy
     - content.code.annotate
     - content.tooltips
+    - content.action.edit
+    - content.action.view
   palette:
     - media: "(prefers-color-scheme: dark)"
       scheme: slate
@@ -83,6 +85,7 @@ nav:
   - Устройства:
       - devices/index.md
       - Станция Лайт (Micro): devices/station-lite.md
+      - Станция Мини 3 (Bergamot): devices/station-mini3.md
       - Станция Мини 2: devices/station-mini2.md
       - Станция Мини (1 пок): devices/station-mini.md
       - Станция Миди (Cucumber): devices/station-midi.md
@@ -94,8 +97,13 @@ nav:
   - Платформа (quasar):
       - Архитектура прошивки: platform/architecture.md
       - Получение доступа: platform/access.md
+      - Спецификация Quasar API: platform/quasar-api.md
       - Сеть и glagol: platform/network.md
       - Сборка софта: platform/toolchain.md
+      - Подводные камни и автономность: platform/gotchas.md
   - Пакетный менеджер yse: packages.md
-  - Рецепты и проекты: projects.md
+  - Рецепты и проекты:
+      - Обзор проектов: projects.md
+      - Своя LLM (ChatGPT / Claude): projects/chatgpt-proxy.md
+      - AirPlay (Shairport Sync): projects/airplay.md
   - Как дополнять вики: contributing.md

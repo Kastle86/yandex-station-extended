@@ -36,7 +36,7 @@ Amlogic-поколениям (с поправкой на версию ядра; 
 | Станция Макс | `yandexstation_2` ⚠️ | Amlogic + Android 9 | ✅ разобрана | [Макс](station-max.md) |
 | Станция (1-го поколения) | `tulip-d1` | Allwinner R18 (sun50iw1) | ✅ разобрана | [Станция gen1](station-gen1.md) |
 | Умный хаб Яндекса (не колонка) | `yandex,saturn` | Amlogic AXG | ✅ разобран | [Умный хаб](yandex-hub.md) |
-| Станция Мини 3 | ? | ? | ⏳ нужны данные | — |
+| Станция Мини 3 | `yandex,station-mini3` (bergamot) | Amlogic AXG | ✅ разобрана | [Мини 3](station-mini3.md) |
 | Станция Дуо Макс | ? | ? | ⏳ нужны данные | — |
 | Станция Про | ? | ? | ⏳ нужны данные | — |
 
