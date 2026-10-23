@@ -1,110 +1,183 @@
 # Получение доступа
 
-Как получить root-доступ к станции и сделать его устойчивым. Проверено на
-[Станции Лайт](../devices/station-lite.md); на других Amlogic-моделях механизмы те же.
+Как получить root-доступ к Яндекс Станции, закрепить его и полностью отключить автообновления Яндекса.
 
-## ADB — как включается { #adb }
+---
 
-`activate_adb.sh` + `adb_options.inc`. Логика по **файлам-маркерам** в `/data/quasar`:
+## ⚡ Экспресс-метод: Разблокировка через подмену DNS (quasar-unlock) { #dns-unlock }
 
-```
-activate_adb_sound        # включён «звуковой» командой
-activate_adb_quasmodrom   # включён через quasmodrom-конфиг (серверно)
-activate_adb_glagol       # включён по glagol
-activate_network_adb      # adbd по СЕТИ (иначе только USB)
-```
+Самый быстрый и актуальный способ получить сетевой ADB без пайки и разборки корпуса — использование публичного сервера подмены OTA-прошивки.
 
-`onboot.sh` → `activate_adb.sh check`: если есть любой из первых трёх маркеров —
-поднимает adbd; если есть ещё и `activate_network_adb` — adbd по TCP (bare `adbd` =
-порт **5555**), иначе USB-gadget (`adb.sh start`).
+### Пошаговый алгоритм:
 
-- Сетевой adbd = `start-stop-daemon -S -b -x adbd` → слушает `0.0.0.0:5555`.
-- USB-adb: `adb.sh` конфигурит USB-gadget через **configfs**
-  (`/sys/kernel/config/usb_gadget/g1`, VID `0x18d1` Google, PID `0x4e40`,
-  функция `ffs.adb`). Через configfs можно добавить другие gadget-функции
-  (serial / RNDIS-ethernet / mass-storage).
-- root-shell по adb **без авторизации** (сборка `user`, но adbd даёт uid 0).
+1. **Сброс до заводских настроек:**
+   * Отключите питание колонки.
+   * Зажмите кнопку активации (или кнопку микрофона/паузы в зависимости от модели) и подключите питание.
+   * Удерживайте кнопку, пока колонка не начнёт светиться жёлтым/фиолетовым и Алиса не скажет, что начался сброс.
+2. **Первичная привязка в приложении:**
+   * Откройте приложение «Дом с Алисой» или «Яндекс» на смартфоне.
+   * Начните стандартный поиск и подключение устройства.
+   * Дойдите до экрана **выбора сети Wi-Fi и ввода пароля**.
+3. **Включение DNS на роутере (СТРОГО НЕ РАНЬШЕ!):**
+   * **Именно на этапе выбора Wi-Fi** включите DNS **`179.254.167.126`** в настройках вашей домашней сети на роутере.
+   * Второй (альтернативный) DNS оставьте **пустым**.
+   * !!! warning "Почему тайминг критичен"
+       Если включить этот DNS раньше, колонка не сможет связаться с серверами авторизации Яндекса при первой привязке, и приложение выдаст «Ошибку подключения». DNS нужен в момент, когда колонка впервые обращается за OTA-прошивкой.
+4. **Подключение и получение обновления:**
+   * Нажмите «Продолжить» в приложении смартфона.
+   * Колонка подключится к Wi-Fi, получит новый DNS и запросит обновление у `quasar.yandex.net`.
+   * Сервер подменит ответ и выдаст прошивку с активированным сетевым ADB.
+   * Дождитесь завершения обновления (световая индикация покажет окончание).
+5. **Проверка доступа по ADB:**
+   * Найдите локальный IP-адрес колонки в списке клиентов вашего роутера.
+   * Подключитесь с компьютера:
+     ```sh
+     adb connect <IP_колонки>:5555
+     adb devices
+     adb shell
+     ```
+   * Вы получили root-шелл (`uid=0(root)`).
+6. **Фиксация доступа и отключение OTA:**
+   * Сразу выполните скрипт фиксации (см. [Отключение OTA](#kill-ota)), чтобы Яндекс не накатил поверх исправляющую прошивку.
+7. **Возврат настроек сети:**
+   * Отключите DNS `179.254.167.126` на роутере и верните стандартные параметры.
+
+---
+
+### Настройка роутеров для подмены DNS
+
+=== "Keenetic (KeenOS)"
+    **Способ 1 (через веб-интерфейс, для всей домашней сети):**
+    1. Перейдите в **«Сетевые правила»** (или «Мои сети и Wi-Fi») → **«Домашняя сеть»**.
+    2. В блоке **«Параметры IP и DHCP»** найдите поля DNS.
+    3. В поле **DNS 1** введите: `179.254.167.126`. Поле **DNS 2** оставьте пустым.
+    4. Нажмите **«Сохранить»**.
+    
+    **Способ 2 (точечно через CLI, не затрагивая другие устройства):**
+    ```text
+    ip host quasar.yandex.net 179.254.167.126
+    system configuration save
+    ```
+    *После получения рута удалить: `no ip host quasar.yandex.net`.*
+
+=== "OpenWrt"
+    Для перенаправления DNS только для конкретной колонки по её MAC-адресу:
+    ```sh
+    uci add firewall redirect
+    uci set firewall.@redirect[-1].name='Intercept-Quasar-DNS'
+    uci set firewall.@redirect[-1].src='lan'
+    uci set firewall.@redirect[-1].src_mac='<MAC_КОЛОНКИ>'
+    uci set firewall.@redirect[-1].proto='tcp udp'
+    uci set firewall.@redirect[-1].src_dport='53'
+    uci set firewall.@redirect[-1].dest_ip='179.254.167.126'
+    uci set firewall.@redirect[-1].dest_port='53'
+    uci set firewall.@redirect[-1].target='DNAT'
+    uci commit firewall && /etc/init.d/firewall reload
+    ```
+
+---
+
+### Траблшутинг DNS-разблокировки
+
+* **Проверка подмены перед подключением колонки:**
+  С компьютера в той же сети выполните:
+  ```sh
+  dig +short quasar.yandex.net
+  ```
+  Команда должна вернуть ровно один адрес: `179.254.167.126`.
+* **Сброс локального DNS-кэша:**
+  Если роутер запомнил старый IP:
+  * На Keenetic: команда `clear ip dns cache`.
+  * В браузере Chrome: `chrome://net-internals/#dns` → **Clear host cache**.
+
+---
+
+## 🔒 Фиксация доступа и отключение OTA { #kill-ota #ota #durable }
+
+Как только вы получили первый доступ по `adb shell`, **первое действие** — навсегда запретить Яндексу обновлять прошивку и зафиксировать маркеры автозапуска ADB.
+
+Выполните прямо в консоли колонки:
 
 ```sh
-adb connect <IP>:5555 && adb shell
+# 1. Перемонтируем rootfs в режим чтения-записи
+mount -o remount,rw /
+
+# 2. Фиксируем маркеры автозапуска ADB
+mkdir -p /data/quasar
+touch /data/quasar/activate_adb_quasmodrom
+touch /data/quasar/activate_network_adb
+chattr +i /data/quasar/activate_adb_quasmodrom /data/quasar/activate_network_adb 2>/dev/null
+
+# 3. Отключаем демона обновления updatesd в launch.json
+if [ -f /etc/launch.json ]; then
+    sed -i '/updatesd/d' /etc/launch.json
+fi
+
+# 4. Обезоруживаем скрипт обновления device_ota_update.sh
+if [ -f /system/vendor/quasar/device_ota_update.sh ]; then
+    echo '#!/bin/sh' > /system/vendor/quasar/device_ota_update.sh
+    echo 'exit 0' >> /system/vendor/quasar/device_ota_update.sh
+    chmod +x /system/vendor/quasar/device_ota_update.sh
+fi
+
+# 5. Подменяем публичный ключ подписи OTA (двойная страховка)
+if [ -f /etc/ota_script.pub ]; then
+    echo "CORRUPTED_KEY" > /etc/ota_script.pub
+fi
+
+sync
+echo "OTA отключён, сетевой ADB зафиксирован!"
 ```
 
-Включение ADB «с нуля» (когда ещё есть доступ): маркеры ставит серверный
-quasmodrom-конфиг, либо их можно создать вручную и поднять adbd, если доступ уже
-есть другим путём.
+---
+
+## ADB — устройство и маркеры { #adb-internals #adb }
+
+В прошивке за запуск отладочного моста отвечают скрипты `activate_adb.sh` и `adb_options.inc`. Они сканируют каталог `/data/quasar/` на наличие файлов-маркеров:
+
+```text
+activate_adb_sound        # включён звуковой командой (устарело)
+activate_adb_quasmodrom   # включён через конфиг quasmodrom (серверный флаг)
+activate_adb_glagol       # включён по протоколу glagol
+activate_network_adb      # слушать по TCP/Wi-Fi (порт 5555), а не только по USB
+```
+
+При старте системы (`onboot.sh`):
+1. Если найден любой из маркеров активации — запускается демон `adbd`.
+2. Если присутствует маркер `activate_network_adb` — демон слушает порт `0.0.0.0:5555`.
+3. `adbd` стартует от пользователя **root** (`uid=0`), авторизация по RSA-ключам отключена.
+
+---
 
 ## SSH (dropbear) { #ssh }
 
-ADB зависит от маркеров, которыми управляет облако. Независимый канал — свой
-SSH-сервер.
+Чтобы не зависеть от демона ADB (который может быть повреждён облачными конфигами), рекомендуется настроить автономный SSH-сервер **Dropbear**:
 
-- Собрать статический **dropbear** (aarch64/musl, см.
-  [Сборка софта](toolchain.md)), положить в `/data/opt/bin`.
-- Патч `svr-authpasswd.c` разрешает вход в аккаунт с пустым паролем (у `root` пароль
-  пустой), либо завести ключи.
-- Автозапуск — свой `/etc/init.d/S99z…` (после `remount rw`), демонизирует dropbear
-  и всегда `exit 0`. Имя `S99z*` → стартует **после** `S99quasar`, так что при сбое
-  скрипта adb остаётся как запасной канал.
+1. Скачайте или соберите статический бинарник `dropbear` под архитектуру вашей колонки (для Лайт/Мини/Миди — `aarch64-linux-musl`, см. [Сборка софта](toolchain.md)).
+2. Положите бинарник в `/data/opt/bin/dropbear`.
+3. Настройте автозапуск через `/etc/init.d/S99z_dropbear`:
+   ```sh
+   cat << 'EOF' > /etc/init.d/S99z_dropbear
+   #!/bin/sh
+   /data/opt/bin/dropbear -p 2222 -B -R
+   exit 0
+   EOF
+   chmod +x /etc/init.d/S99z_dropbear
+   ```
+4. Вход:
+   ```sh
+   ssh -p 2222 root@<IP_колонки>
+   ```
+   *(У пользователя root по умолчанию пустой пароль — просто нажмите Enter).*
+
+---
+
+## Serial-консоль (UART) и `rh_unlock` { #serial }
+
+На системной плате всех Станций выведены контакты TX/RX аппаратного UART. Однако вывод шелла в штатном режиме заглушен через проверку в ядре:
 
 ```sh
-ssh -p 2222 root@<IP>        # с пустым паролем — просто Enter
+grep -qwF 'androidboot.rh_unlock=1' /proc/cmdline && exec /sbin/getty "$@" || exec sleep infinity
 ```
 
-!!! tip "Пустой пароль через sshpass"
-    `sshpass -p '' ssh -p 2222 root@<IP>`. **Не** `-p ""` через `eval` — туда уйдёт
-    литерал `""` как пароль, и аутентификация поведёт себя странно.
-
-## Serial-консоль и `rh_unlock` { #serial }
-
-Getty на UART обёрнут в `getty_rabbit_hole`:
-
-```sh
-grep -qwF 'androidboot.rh_unlock=1' /proc/cmdline && exec /sbin/getty "$@" \
-  || exec sleep infinity
-```
-
-При `rh_unlock=0` (штатно) serial-getty уходит в `sleep infinity` — «кроличья нора».
-Чтобы получить root-консоль на UART, нужно `rh_unlock=1` в cmdline (ставится
-загрузчиком / unlock-состоянием) — это **официальный dev-unlock** Яндекса. Варианты:
-
-- правка bootargs в U-Boot env (если доступен);
-- проще и без риска — свой getty-враппер в rootfs (RW) на нужном tty.
-
-## Отключение OTA { #ota }
-
-Чтобы правки rootfs не откатывались обновлением. Цепочка OTA:
-
-```
-maind --updatesd → quasar.yandex.net/check_updates → загрузка с quasar.s3.yandex.net
-→ проверка подписи ota_script.pub (RSA PKCS#1) → распаковка → update_script.sh
-→ apply_packed_ota → reboot
-```
-
-Глушится тремя правками rootfs (после `mount -o remount,rw /`):
-
-1. убрать задачу `updatesd` из `launch.json` (апдейтер не стартует);
-2. подменить `ota_script.pub` на чужой ключ (любой OTA провалит подпись — «ремень»);
-3. застабить `device_ota_update.sh`.
-
-Делайте это скриптом с бэкапом и возможностью отката (`disable | status | restore`).
-Проверено на Лайте: после ребута `--updatesd` не стартует.
-
-## Устойчивый доступ { #durable }
-
-1. **rootfs RW без verity.** `mount -o remount,rw /` → правки `/etc`, `/system`
-   переживают ребут (при отключённом OTA).
-2. **Фиксация ADB-маркеров.** `chattr +i` на маркеры (ubifs поддерживает) — облако не
-   удалит, adbd встаёт каждый boot. (Облако умеет гасить `remoteActivation`.)
-3. **Два независимых канала.** SSH (свой, облаку невидим) + ADB (по маркерам). Снесут
-   один — остаётся другой.
-4. **firewall — каркас, но не фильтрует.** `yio_iptables_init.sh` создаёт цепочки
-   `yio_*`, но листовые пустые, policy `ACCEPT` → входящие по факту открыты.
-
-## Инструменты на борту
-
-`devmem` (`CONFIG_DEVMEM=y`, `CONFIG_DEVKMEM=y`), `insmod`/`modprobe` (OOT-модули
-грузятся, `tainted=4096`), i2c-tools, `crond`, `wget`, `telnet`, `tftp`.
-
-!!! danger "Чего НЕ трогаем"
-    TEE/keymaster (`/dev/tee0`, `/tee` nv) хранит ключи устройства; glagol-ключи — в
-    `devices.json`. Их компрометация = потеря доверия устройства в облаке.
+При значении `rh_unlock=0` терминал засыпает навсегда («Rabbit Hole»). Включение консоли на UART возможно либо при аппаратном выставлении флага в загрузчике U-Boot, либо заменой скрипта `getty_rabbit_hole` в RW-rootfs.

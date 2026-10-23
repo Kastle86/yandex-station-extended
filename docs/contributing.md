@@ -1,72 +1,88 @@
 # Как дополнять вики
 
-Вики наполняется материалом сообщества. Можно просто прислать Markdown — он будет
-разложен по нужным разделам.
+Вики проекта **Yandex Station Extended** полностью открыта для сообщества. Если вы исследовали свою колонку, сняли дампы или написали полезный скрипт — вы можете легко добавить свой материал.
 
-## Куда что идёт
+---
 
-| Тип материала | Раздел |
+## 🚀 Самый простой способ (прямо в браузере за 1 минуту)
+
+На сайте настроена прямая интеграция с GitHub:
+
+1. Откройте любую статью на сайте **[hackalice.me](https://hackalice.me)**.
+2. Вверху справа (под заголовком) нажмите иконку **✏️ (карандаш) — «Редактировать страницу»**.
+3. Вас перенаправит в веб-редактор GitHub прямо к нужному `.md`-файлу.
+4. Внесите изменения или дополнения.
+5. Внизу страницы нажмите **«Propose changes»** (Создать Pull Request).
+6. Мы проверим правки, нажмём **Merge**, и сайт автоматически обновится за 15 секунд через GitHub Actions!
+
+---
+
+## Куда добавлять материалы
+
+| Тип материала | Каталог в репозитории |
 |---|---|
 | Железо конкретной модели (SoC, флеш, I2C, LED, звук) | `docs/devices/<модель>.md` |
+| Новая неизученная модель | Создать новый файл в `docs/devices/` и добавить в `mkdocs.yml` |
 | Общее по прошивке (quasar, maind, boot, gst-launch) | `docs/platform/architecture.md` |
-| Способы доступа (ADB, SSH, serial, OTA, durable) | `docs/platform/access.md` |
+| Методы доступа (ADB, эксплойты, DNS-подмена, serial) | `docs/platform/access.md` |
 | Сеть, порты, glagol, Bluetooth | `docs/platform/network.md` |
-| Кросс-сборка бинарников | `docs/platform/toolchain.md` |
-| Готовый приём/проект/скрипт | `docs/projects.md` |
+| Кросс-компиляция софта под ARM | `docs/platform/toolchain.md` |
+| Готовые рецепты, проекты, скрипты | `docs/projects.md` |
+| Пакетный менеджер `yse` | `docs/packages.md` |
 
-Правило: **одинаковое для всех Amlogic-станций → в «Платформу»; специфичное для
-модели → в «Устройства»**.
+> **Золотое правило:** Всё, что одинаково для всех Станций на Amlogic, пишется в раздел **«Платформа»**; специфика конкретного корпуса/платы — в **«Устройства»**.
 
-## Формат присылаемого Markdown
+---
 
-Не нужно оформлять идеально — важнее факты и как они получены. Минимум:
+## Минимальный набор данных для новой модели
 
-- какая модель и версия прошивки (`/system/vendor/quasar/VERSION`,
-  `cat /proc/device-tree/model`);
-- команды, которыми снято (чтобы можно было воспроизвести);
-- вывод как есть (dmesg-строки, `/proc/mtd`, список i2c и т.п.) — отформатирую сам.
+Если у вас на руках модель, которой ещё нет в матрице (например, *Станция Мини 3*, *Станция Дуо Макс*, *Станция Про*):
 
-Пример заголовка материала:
-
-```markdown
-## Станция Мини 3 — карта флеша
-Модель: <model>, quasar <версия>
-Снято: `cat /proc/mtd`
-<вывод>
-```
-
-## Что НЕ публикуем
-
-- приватные ключи (`/data/quasar/devices.json`: `server_private_key`, `secret`);
-- MAC-адреса, серийные номера, `device-id`, OAuth-токены;
-- координаты/адрес, SSID и хеши Wi-Fi, e-mail аккаунта.
-
-Если в выводе команды есть такие данные — замазывайте перед отправкой (или скажите,
-и я вычищу при вёрстке).
-
-## Минимальный набор для новой модели
+Подключитесь по `adb shell` и снимите диагностику одной командой:
 
 ```sh
-uname -a
+echo "=== MODEL & KERNEL ==="
 cat /proc/device-tree/model
-cat /proc/cpuinfo | grep -E 'processor|part|Hardware'
-cat /proc/meminfo | head -1
+uname -a
+echo "=== CPU ==="
+cat /proc/cpuinfo | grep -E 'processor|part|Hardware|model name'
+echo "=== MEMORY & STORAGE ==="
+cat /proc/meminfo | head -2
 cat /proc/mtd
-cat /proc/mounts
+df -h
+echo "=== I2C & PERIPHERY ==="
 ls /sys/bus/i2c/devices/
-cat /system/vendor/quasar/VERSION
 ls /sys/class/leds/
 cat /proc/asound/cards
+echo "=== QUASAR VERSION ==="
+cat /system/vendor/quasar/VERSION 2>/dev/null
 ```
 
-Этого хватит, чтобы завести страницу устройства и строку в
-[матрице поддержки](devices/index.md#support-matrix).
+Откройте [Issue в репозитории](https://github.com/Marker284/yandex-station-extended/issues) или создайте Pull Request — мы оформим эти данные в красивую страницу устройства!
 
-## Локально посмотреть правки
+---
+
+## 🔒 Что категорически НЕ публикуется:
+
+В целях безопасности и приватности авторов в статьях **запрещено** указывать:
+* Приватные ключи устройства (`/data/quasar/devices.json`: `server_private_key`, `secret`);
+* Реальные MAC-адреса, серийные номера и персональные `device-id`;
+* OAuth-токены аккаунтов Яндекса;
+* Пароли, Wi-Fi SSID и домашние координаты.
+
+*(Заменяйте серийники и токены на `<DEVICE_ID>` / `<REDACTED>`)*.
+
+---
+
+## 💻 Локальный запуск (для разработчиков документации)
+
+Если вы хотите клонировать репозиторий и просматривать правки локально:
 
 ```sh
-cd ~/yandex-wiki
-./venv/bin/mkdocs serve -a 127.0.0.1:8000     # live-reload
+git clone https://github.com/Marker284/yandex-station-extended.git
+cd yandex-station-extended
+python3 -m venv venv
+./venv/bin/pip install -r requirements.txt
+./venv/bin/mkdocs serve
 ```
-
-Структура навигации — в `mkdocs.yml` (`nav:`). Деплой на прод — см. `DEPLOY.md`.
+Сайт с live-reload откроется на `http://127.0.0.1:8000`.
