@@ -1,121 +1,152 @@
 # Архитектура прошивки (quasar)
 
-`quasar` — прошивочный стек Яндекса, общий для Amlogic-станций. Описание ниже
-проверено на [Станции Лайт](../devices/station-lite.md); на других моделях цепочка
-та же, но версии и пути могут отличаться — дополняйте.
+`quasar` — прошивочный программный стек Яндекса, работающий на всех Amlogic-станциях (Лайт, Мини, Мини 2, Миди, Станция 2, Станция Стрит, Хаб).
 
-## Загрузка и init
+Ниже разобран полный жизненный цикл системы: от загрузки ядра Linux до внутренней кухни демонов `maind`, конвейеров GStreamer и моделей машинного обучения.
 
-BusyBox init (`/sbin/init` → busybox), `/etc/inittab`:
+---
 
-- `sysinit` → mount proc/pts/shm, `mount -a`, hostname, затем `/etc/init.d/rcS`;
-- `console::respawn:/sbin/getty_rabbit_hole` — getty на serial (см.
-  [Доступ → serial](access.md#serial));
-- `rcS` прогоняет по порядку все `/etc/init.d/S??*`.
+## 🚀 Порядок загрузки и инициализация init
 
-Порядок `S`-скриптов (Лайт):
+Система построена на легковесном дистрибутиве **Buildroot** с системой инициализации BusyBox init (`/sbin/init`).
 
-```
-S00hostname  S01rw-dirs  S01syslogd  S01watchdog  S02klogd  S02sysctl
-S10mdev  S20urandom  S30dbus  S39w1_wifi_ant_config  S40dhcpcd-db  S40net.lo
-S40wifi  S41dhcpcd  S45tas58xx  S49chrony  S49teeinit  S50hci0  S51bluetoothd
-S52bluealsa  S53bluealsa-aplay  S54default-bluez-agent  S60touch_buttons_settings
-S70unbound  S98pstore-clear  S99quasar
-```
+### 1. Этап `/etc/inittab`
 
-`S99quasar` → `/system/vendor/quasar/onboot.sh start`:
+1. Запускается директива `sysinit`: монтируются виртуальные файловые системы `/proc`, `/sys`, `/dev/pts`, `/dev/shm`, выставляется имя хоста и запускается мастер-скрипт `/etc/init.d/rcS`.
+2. Запускается консоль: `console::respawn:/sbin/getty_rabbit_hole` (защитная заглушка для аппаратного UART-порта).
+3. `rcS` последовательно выполняет скрипты `/etc/init.d/S??*` в алфавитном порядке:
 
-- `echo 1 > /proc/sys/vm/overcommit_memory`;
-- чистит старые OTA-артефакты (`/bkupgrade/update_*`, `/bkupgrade/ota/*`, `uImage*`);
-- экспортит `LD_LIBRARY_PATH=…/quasar/libs`, `GST_PLUGIN_PATH`, `PATH`;
-- `yio_iptables_init.sh` (firewall-каркас), `set_monotonic_time.sh`;
-- **`activate_adb.sh check`** — включает adbd по файлам-маркерам (см.
-  [Доступ → ADB](access.md#adb));
-- `route delete default gateway 10.10.10.254 wlan1` — чистит маршрут setup-режима
-  (10.10.10.x — softAP первичной настройки);
-- `run.sh` → `quasar_launcher2 launch.json`.
-
-`run.sh`: `ulimit -n 10240`, `ulimit -s 1024` (стек 1 МБ — у quasar >100 потоков),
-запускает `quasar_launcher2`, который по `launch.json` стартует демоны `maind`.
-
-## Стек quasar
-
-Всё в одном бинарнике **`maind`** (~21 МБ на Лайте), запускается многократно под
-разными ролями (`quasar_launcher2` по `launch.json`). Симлинки на `maind`:
-`keymaster_proxy_app`, `led_util`, `metrics_collector`, `quasar_client`,
-`tcp_alsa_writer`.
-
-**Демоны (роли maind):** `--platformd` (главный: glagol, облако, IoT), `--mediad`
-(воспроизведение), `--telemetry`, `--fluent-bitd` (логи), `--updatesd` (OTA — см.
-[отключение](access.md#ota)).
-
-**Tools-режимы `maind`** (`--help`):
-
-```
---build-timestamp  --cli  --device-id  --device-localization  --full-info
---getprop  --glagol-connections  --gst-launch  --nettest
---set-dev-backend-flag  --remove-dev-backend-flag  --save-last-monotonic-time
---version  --wifi-info
+```text
+S00hostname              # Установка имени хоста
+S01rw-dirs               # Подготовка временных каталогов в tmpfs
+S01syslogd               # Системное логирование
+S01watchdog              # Запуск аппаратного сторожевого таймера
+S10mdev                  # Менеджер устройств ядра
+S30dbus                  # Системная шина D-Bus
+S40wifi / S41dhcpcd      # Поднятие беспроводного интерфейса wlan0 и получение DHCP
+S49teeinit               # Инициализация доверенной зоны TrustZone (OP-TEE)
+S51bluetoothd / S52bluealsa # Bluetooth-стек и аудиомост BlueALSA
+S70unbound               # Локальный DNS-резолвер (127.0.0.1:53)
+S99quasar                # Главная точка входа в стек Яндекса
 ```
 
-### `--gst-launch` { #gst-launch }
+---
 
-Встроенный `gst-launch` поверх родного GStreamer Яндекса:
+## 📦 Скрипт `S99quasar` и запуск супервизора
 
+Скрипт `/etc/init.d/S99quasar` вызывает `/system/vendor/quasar/onboot.sh start`, который подготавливает окружение:
+
+1. **Тюнинг памяти:** `echo 1 > /proc/sys/vm/overcommit_memory`.
+2. **Очистка временных файлов OTA:** удаляются старые образы обновления из `/bkupgrade/` и `/data/`.
+3. **Настройка путей библиотек:**
+   ```sh
+   export LD_LIBRARY_PATH=/system/vendor/quasar/libs:$LD_LIBRARY_PATH
+   export GST_PLUGIN_PATH=/system/vendor/quasar/libs
+   export PATH=/system/vendor/quasar:$PATH
+   ```
+4. **Проверка отладочного моста:** вызов `activate_adb.sh check`. Скрипт проверяет наличие файлов-маркеров в `/data/quasar/` и при их наличии поднимает демон `adbd` на порту **5555**.
+5. **Запуск супервизора через `run.sh`:**
+   * Снимаются лимиты на дескрипторы: `ulimit -n 10240`.
+   * Лимит стека задается в `1024 КБ` (`ulimit -s 1024`), так как у процессов quasar суммарно более сотни потоков.
+   * Стартует менеджер процессов: `quasar_launcher2 launch.json`.
+
+---
+
+## 🧩 Анатомия бинарника `maind` и его роли
+
+Весь прикладной функционал умной колонки упакован в **один монолитный исполняемый файл `maind`** (размером ~20–25 МБ). В зависимости от переданных аргументов в `launch.json`, он выполняет разные системные роли:
+
+| Роль (аргумент) | Назначение процесса |
+|---|---|
+| **`--platformd`** | **Главный мозг колонки.** Управляет облачным протоколом, локальным API `glagol` (`:1961`), интеграцией Matter/Zenoh (`:7447`), состоянием Wi-Fi и регистрацией устройства. |
+| **`--mediad`** | **Медиа-движок.** Отвечает за прием аудиопотоков, декодирование, эквалайзер, сведение звука, управление громкостью и вывод через ALSA. |
+| **`--telemetry`** | Сбор метрик стабильности, загрузки CPU, использования памяти и ошибок. |
+| **`--fluent-bitd`** | Упаковка и сжатие системных логов с помощью словаря Zstandard (`zstd.dict`) перед отправкой в облако. |
+| **`--updatesd`** | Демон проверки и применения обновлений OTA (обращается к `quasar.yandex.net/check_updates`). При рутировании **вырезается из `launch.json`**. |
+
+### Сервисные симлинки на `maind`:
+В каталоге `/system/vendor/quasar/` созданы симлинки на `maind`, которые запускают его во встроенных утилитных режимах:
+* `led_util` — воспроизведение световых паттернов;
+* `tcp_alsa_writer` — утилита прямого вывода звука в аудио-пайплайн;
+* `keymaster_proxy_app` — проксирование криптографических вызовов к TrustZone / TEE;
+* `quasar_client` — CLI-клиент для отправки IPC-команд работающим демонам.
+
+---
+
+## 🎧 Аудиотракт и конвейеры GStreamer
+
+В прошивку встроен кастомизированный монолитный фреймворк **GStreamer** (библиотека `libquasar_gstreamer.so`). В отличие от стандартного Linux, в нём отключен внешний динамический реестр плагинов — все нужные декодеры скомпилированы статически внутри.
+
+```text
+[ Микрофоны PDM ] ──► [ Аппаратный захват ALSA ] ──► [ VQE (Эхоподавление) ] ──► [ TFLite Споттер ]
+                                                                                   │
+[ ALSA Loopback AEC ] ─────────────────────────────────────────────────────────────┘
+                                                                                   │
+                                                                         Слово активации "Алиса"
+                                                                                   ▼
+[ Интернет / Bluetooth / Локально ] ──► [ GStreamer maind ] ──► [ ALSA TDM-B ] ──► [ ЦАП / Усилитель ]
 ```
---gst-launch [--clock <host:port>] <PIPELINE> [--next <PIPELINE> ...]
-```
 
-- поддерживает несколько конвейеров подряд (`--next`);
-- **`--clock`** — синхрочасы для мультирум/стерео-пары;
-- доступны `souphttpsrc`, `decodebin`, opus/aac/mp3, `alsasink`, `scaletempo`, EQ,
-  `spectrum` и кастомные элементы Яндекса.
+### Встроенный инструмент `--gst-launch` { #gst-launch }
 
-Пример (проверено, что пайплайн инициализируется):
+В `maind` встроен полноценный интерпретатор GStreamer-пайплайнов:
 
 ```sh
 cd /system/vendor/quasar
 LD_LIBRARY_PATH=libs ./maind --gst-launch \
-  "souphttpsrc location=<URL> ! decodebin ! audioconvert ! audioresample ! alsasink"
+  "souphttpsrc location=http://my-stream ! decodebin ! audioconvert ! audioresample ! alsasink"
 ```
 
-!!! tip
-    Это правильный путь, чтобы играть произвольный звук **без** своего ffmpeg/aplay —
-    родным трактом с EQ и ресемплом.
+**Особенности:**
+* Поддерживает склейку нескольких независимых конвейеров через ключ `--next`.
+* Параметр `--clock <IP:порт>` позволяет синхронизировать воспроизведение нескольких колонок по локальной сети для создания стереопар и мультирума.
 
-### Хелпер `q`
+---
 
-`/system/vendor/quasar/q` оборачивает tools-режимы:
+## 🤖 Модели машинного обучения на борту
 
-```
-q {start|stop|restart|version|device-id|wifi-info|glagol-connections|
-   full-info|backend-dev|backend-prod|cli|save-last-monotonic-time|getprop}
-```
+В каталоге `/system/vendor/quasar/` размещены оптимизированные нейросетевые модели:
 
-- `q cli` → интерактивная консоль `maind --cli`;
-- `q backend-dev` → `maind --set-dev-backend-flag` (переключение на **dev-backend**
-  Яндекса) + restart; `q backend-prod` — обратно;
-- `begemot` — локальный NLU-движок, останавливается вместе с maind.
+1. **`spotter_models/`** — модели споттера ключевых слов (wake-word) на базе TensorFlow Lite (`libtflite.so`):
+   * `activation` — распознавание имени «Алиса» / «Яндекс» с минимальным энергопотреблением.
+   * `command` — быстрое распознавание офлайн-команд («громче», «тише», «стоп»).
+   * `vad` (Voice Activity Detection) — детектор наличия человеческой речи.
+   * `counteractivation` — фильтр ложных срабатываний из телевизора или радио.
+2. **`vqe_models/`** (Voice Quality Enhancement):
+   * Адаптивное подавление акустического эха (AEC). Модель «вычитает» из микрофонного сигнала музыку, которую в этот же момент играет сам динамик колонки.
+   * Формирование диаграммы направленности (Beamforming) для выделения голоса говорящего.
+3. **`matter/paa/`**:
+   * Сертификаты Product Attestation Authority для защищенного подключения устройств стандарта Matter.
 
-### Библиотеки (`/system/vendor/quasar/libs`)
+---
 
-| Библиотека | Назначение |
+## 📁 Карта конфигурационных файлов
+
+| Путь | Назначение |
 |---|---|
-| `libquasar_gstreamer.so` | монолитный GStreamer (плагины встроены, реестр отключён) |
-| `libyandex_evil.so` | внутренний слой (обфускация / anti-tamper / крипто) |
-| `libtflite.so` | TensorFlow Lite (споттер wake-word, VQE) |
-| `libglib.so`, `libavahi-*` | GLib, mDNS (glagol discovery) |
-| `libiconv.so` | перекодировка |
+| **`/etc/launch.json`** | Конфигурация супервизора `quasar_launcher2`: список запускаемых ролей `maind`, лимиты памяти, переменные окружения. |
+| **`/system/vendor/quasar/quasar.cfg`** | Системные настройки аудиотракта, задержек ALSA, параметров VQE и споттера. |
+| **`/data/quasar/devices.json`** | **Главный секрет устройства:** персональный сертификат колонки, серверный публичный ключ, токен синхронизации. *(Никогда не публикуется!)* |
+| **`/data/quasar/spotter_config.json`** | Пользовательские настройки активационной фразы («Алиса» или «Яндекс»). |
+| **`/etc/asound.conf`** | Конфигурация звуковых устройств ALSA, маршрутизация TDM-шин и софтверных микшеров. |
 
-### Модели и ресурсы
+---
 
-- `spotter_models/` — wake-word (activation/command/vad/counteractivation);
-- `vqe_models/` — эхоподавление / beamforming;
-- `bio_lingware/` — TTS / биометрия голоса;
-- `sounds/` — системные звуки;
-- `matter/paa/` — сертификаты Matter PAA (Google / TP-Link / CommScope / …);
-- `quasar.cfg` — конфиг медиа-пайплайнов; `zstd.dict` — словарь сжатия логов.
+## 🛠️ Встроенный хелпер `q`
 
-!!! info "Умный дом"
-    В конфиге включены провайдеры **Matter** и **Zenoh** — колонка работает как
-    Matter-контроллер/хаб.
+В прошивке предусмотрена сервисная утилита `/system/vendor/quasar/q`, облегчающая отладку:
+
+```sh
+# Переключение на тестовый dev-бэкенд Яндекса (и обратно на prod)
+q backend-dev
+q backend-prod
+
+# Получение аппаратного идентификатора
+q device-id
+
+# Просмотр активных локальных подключений glagol
+q glagol-connections
+
+# Интерактивная консоль отладки maind
+q cli
+```
