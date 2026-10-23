@@ -10,11 +10,12 @@ copyright: Community wiki · материал для работы со свои�
 theme:
   name: material
   language: ru
+  logo: assets/images/logo.png
+  favicon: assets/images/favicon.png
   font:
     text: Inter
     code: JetBrains Mono
   icon:
-    logo: material/speaker-wireless
     repo: fontawesome/brands/github
   features:
     - navigation.instant
@@ -33,18 +34,21 @@ theme:
   palette:
     - media: "(prefers-color-scheme: dark)"
       scheme: slate
-      primary: deep orange
-      accent: amber
+      primary: deep purple
+      accent: purple
       toggle:
         icon: material/weather-night
         name: Светлая тема
     - media: "(prefers-color-scheme: light)"
       scheme: default
-      primary: deep orange
-      accent: deep orange
+      primary: deep purple
+      accent: purple
       toggle:
         icon: material/weather-sunny
         name: Тёмная тема
+
+extra_css:
+  - stylesheets/extra.css
 
 markdown_extensions:
   - admonition
