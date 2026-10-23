@@ -1,0 +1,97 @@
+site_name: Yandex Station Extended
+site_description: Community-вики по модификации и исследованию умных колонок Яндекс (семейство Станций) — доступ, прошивка quasar, железо, рецепты
+site_author: Yandex Station Extended community
+site_url: https://marker284.github.io/yandex-station-extended/
+repo_url: https://github.com/Marker284/yandex-station-extended
+repo_name: Marker284/yandex-station-extended
+edit_uri: edit/main/docs/
+copyright: Community wiki · материал для работы со своими устройствами · персональные данные и приватные ключи не публикуются
+
+theme:
+  name: material
+  language: ru
+  font:
+    text: Inter
+    code: JetBrains Mono
+  icon:
+    logo: material/speaker-wireless
+    repo: fontawesome/brands/github
+  features:
+    - navigation.instant
+    - navigation.tracking
+    - navigation.sections
+    - navigation.indexes
+    - navigation.top
+    - navigation.footer
+    - toc.follow
+    - search.suggest
+    - search.highlight
+    - search.share
+    - content.code.copy
+    - content.code.annotate
+    - content.tooltips
+  palette:
+    - media: "(prefers-color-scheme: dark)"
+      scheme: slate
+      primary: deep orange
+      accent: amber
+      toggle:
+        icon: material/weather-night
+        name: Светлая тема
+    - media: "(prefers-color-scheme: light)"
+      scheme: default
+      primary: deep orange
+      accent: deep orange
+      toggle:
+        icon: material/weather-sunny
+        name: Тёмная тема
+
+markdown_extensions:
+  - admonition
+  - pymdownx.details
+  - pymdownx.superfences
+  - pymdownx.highlight:
+      anchor_linenums: true
+      line_spans: __span
+      pygments_lang_class: true
+  - pymdownx.inlinehilite
+  - pymdownx.snippets
+  - pymdownx.tabbed:
+      alternate_style: true
+  - pymdownx.keys
+  - pymdownx.emoji:
+      emoji_index: !!python/name:material.extensions.emoji.twemoji
+      emoji_generator: !!python/name:material.extensions.emoji.to_svg
+  - tables
+  - attr_list
+  - md_in_html
+  - toc:
+      permalink: true
+
+plugins:
+  - search:
+      lang:
+        - ru
+        - en
+
+nav:
+  - Главная: index.md
+  - Устройства:
+      - devices/index.md
+      - Станция Лайт (Micro): devices/station-lite.md
+      - Станция Мини 2: devices/station-mini2.md
+      - Станция Мини (1 пок): devices/station-mini.md
+      - Станция Миди (Cucumber): devices/station-midi.md
+      - Станция 2: devices/station-2.md
+      - Станция Стрит (Mango): devices/station-street.md
+      - Станция Макс: devices/station-max.md
+      - Станция (1 поколения): devices/station-gen1.md
+      - Умный хаб (Saturn): devices/yandex-hub.md
+  - Платформа (quasar):
+      - Архитектура прошивки: platform/architecture.md
+      - Получение доступа: platform/access.md
+      - Сеть и glagol: platform/network.md
+      - Сборка софта: platform/toolchain.md
+  - Пакетный менеджер yse: packages.md
+  - Рецепты и проекты: projects.md
+  - Как дополнять вики: contributing.md
