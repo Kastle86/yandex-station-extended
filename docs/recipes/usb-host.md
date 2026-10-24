@@ -171,6 +171,7 @@ USB OTG: Burst Elite 240G · 223.6 GiB · USB 480 Mbit/s
 | `invalid module format`, в dmesg `version magic '4.9.68 …' should be '4.9.y …'` | модуль собран без `KERNELVERSION = 4.9.y` |
 | Колонка зависает при подключении хаба, `reboot_reason = watchdog_reboot` | загружены старые модули (`S98usb_modules`) |
 | `xHCI host not responding … HC died` | xHCI перепривязан без переключения регистров |
+| С хабом Wi-Fi не подключается: роутер виден с хорошим сигналом, но в логе `AUTH->AUTH` и `CONN_FAILED` (ещё до включения OTG) | не хватает питания: колонка питается через хаб, при передаче Wi-Fi не хватает тока. Нужен более мощный блок питания для хаба |
 | `mount: … Invalid argument` на разделе | exFAT/NTFS — нужен `exfat-fuse`/`ntfs-3g` |
 | `fuse: mount failed: Device or resource busy` | раздел держит упавший ядерный `mount` — только перезагрузка |
 | `aplay` играет в наушники, а Алиса — в динамик | плеер не перечитал конфиг: нужен `touch /usr/share/alsa/alsa.conf` (`audio-route.sh` делает это сам) |
