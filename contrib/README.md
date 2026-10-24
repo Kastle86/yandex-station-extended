@@ -49,17 +49,6 @@
 > роняла колонку при подключении Ethernet и при воспроизведении звука. `ext4`/`exfat` в ядре для
 > этой прошивки собрать безопасно нельзя — для exFAT/NTFS используйте `yse install exfat-fuse ntfs-3g`.
 
----|---|---|
-| **`usb-storage.ko`** | Драйвер USB-флешек и внешних дисков | [Скачать usb-storage.ko](https://github.com/Marker284/yandex-station-extended/raw/main/contrib/modules/usb-storage.ko) |
-| **`uas.ko`** | Протокол USB Attached SCSI для скоростных дисков | [Скачать uas.ko](https://github.com/Marker284/yandex-station-extended/raw/main/contrib/modules/uas.ko) |
-| **`snd-usb-audio.ko`**| Драйвер внешних звуковых карт и USB-ЦАП | [Скачать snd-usb-audio.ko](https://github.com/Marker284/yandex-station-extended/raw/main/contrib/modules/snd-usb-audio.ko) |
-| **`snd-hwdep.ko`** | Зависимость ALSA для звуковых карт | [Скачать snd-hwdep.ko](https://github.com/Marker284/yandex-station-extended/raw/main/contrib/modules/snd-hwdep.ko) |
-| **`snd-rawmidi.ko`** / **`snd-usbmidi-lib.ko`** | Поддержка USB MIDI устройств | [Скачать snd-rawmidi.ko](https://github.com/Marker284/yandex-station-extended/raw/main/contrib/modules/snd-rawmidi.ko) |
-| **`r8152.ko`** | Сетевые адаптеры Realtek RTL8152/RTL8153 | [Скачать r8152.ko](https://github.com/Marker284/yandex-station-extended/raw/main/contrib/modules/r8152.ko) |
-| **`asix.ko`** / **`ax88179_178a.ko`** | Сетевые адаптеры Asix (100M / 1G) | [Скачать asix.ko](https://github.com/Marker284/yandex-station-extended/raw/main/contrib/modules/asix.ko) |
-| **`cdc_ether.ko`** / **`cdc_ncm.ko`** | Сетевые CDC-адаптеры и USB-модемы | [Скачать cdc_ether.ko](https://github.com/Marker284/yandex-station-extended/raw/main/contrib/modules/cdc_ether.ko) |
-| **`usbnet.ko`** / **`mii.ko`** | Базовые сетевые драйверы USB | [Скачать usbnet.ko](https://github.com/Marker284/yandex-station-extended/raw/main/contrib/modules/usbnet.ko) |
-
 ---
 
 ## 🎁 Готовые пакеты и медиа (каталог `contrib/packages/`)
