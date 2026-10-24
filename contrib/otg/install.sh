@@ -9,6 +9,7 @@
 #   /data/otg/otg-host.sh      — переключение Type-C в host + загрузка драйверов
 #   /data/otg/usb-mount.sh     — монтирование разделов в /tmp/usb/<метка>
 #   /data/otg/ff-usb.sh        — строки «USB OTG» для fastfetch
+#   /data/otg/audio-route.sh   — весь звук на USB-карту / обратно на динамик (+ правило mdev)
 #   /data/otg/modules/*.ko     — модули, собранные под ядро Яндекса
 #   /etc/init.d/S97otg-host    — автозапуск с защитой от бутлупа
 # Старый /etc/init.d/S98usb_modules (битые модули из ранней версии гайда) удаляется.
@@ -22,9 +23,9 @@ grep -q "yandex,station-micro" /proc/device-tree/compatible 2>/dev/null \
 command -v devmem >/dev/null || { echo "Нет devmem в busybox — выходим."; exit 1; }
 
 mkdir -p $D/modules
-cp "$SRC/otg/otg-host.sh" "$SRC/otg/usb-mount.sh" "$SRC/otg/ff-usb.sh" $D/
+cp "$SRC/otg/otg-host.sh" "$SRC/otg/usb-mount.sh" "$SRC/otg/ff-usb.sh" "$SRC/otg/audio-route.sh" $D/
 cp "$SRC"/modules/*.ko $D/modules/
-chmod +x $D/otg-host.sh $D/usb-mount.sh $D/ff-usb.sh
+chmod +x $D/otg-host.sh $D/usb-mount.sh $D/ff-usb.sh $D/audio-route.sh
 ( cd "$SRC/modules" && sha256sum -c SHA256SUMS >/dev/null ) || { echo "Контрольные суммы модулей не сошлись."; exit 1; }
 
 mount -o remount,rw /
@@ -34,6 +35,12 @@ if [ -f /etc/init.d/S98usb_modules ]; then
 	echo "Старый S98usb_modules убран (копия: $D/S98usb_modules.bak)"
 fi
 cp "$SRC/otg/S97otg-host" /etc/init.d/S97otg-host
+# USB sound card hotplug -> audio-route.sh auto (mdev matches DEVNAME, e.g. snd/controlC1)
+if ! grep -q audio-route /etc/mdev.conf; then
+	cp -p /etc/mdev.conf $D/mdev.conf.orig
+	sed -i '/^snd\/pcm\.\*/i snd/controlC[1-9]\troot:audio 660 */data/otg/audio-route.sh auto >> /tmp/audio-route.log 2>\&1' /etc/mdev.conf
+	echo "Правило mdev для USB-звука добавлено (вступит в силу после перезагрузки)"
+fi
 chmod +x /etc/init.d/S97otg-host
 sync
 mount -o remount,ro / || true

@@ -164,6 +164,25 @@ cat /proc/asound/cards
 aplay -D hw:1,0 -f S24_3LE -r 48000 -c 2 file.wav    # формат смотрите в /proc/asound/card1/stream0
 ```
 
+**Весь звук — в USB-наушники / ЦАП.** Все плееры колонки (Алиса, музыка, системные звуки,
+AirPlay/Bluetooth) пишут в ALSA `default`: `softvol "Master"` → `dmix_spk` → `hw:0,0` (усилитель).
+[`audio-route.sh`](https://github.com/Marker284/yandex-station-extended/blob/main/contrib/otg/audio-route.sh)
+переключает только `dmix_spk` на USB-карту, поэтому громкость (кнопки, «Алиса, громче») работает и в наушниках:
+
+```sh
+/data/otg/audio-route.sh usb       # всё на USB-карту (формат/частота берутся из /proc/asound/cardN/stream0)
+/data/otg/audio-route.sh speaker   # обратно на динамик
+/data/otg/audio-route.sh status
+touch /data/otg/audio-no-usb       # не переключаться на USB автоматически
+```
+
+* Подключили карту — звук ушёл на неё, отключили — вернулся на динамик (правило `snd/controlC[1-9]` в
+  `/etc/mdev.conf`; `mdev -d` кэширует правила, поэтому оно начинает работать после перезагрузки).
+* При загрузке маршрут сначала сбрасывается на динамик, а на USB его переключает hotplug, когда OTG поднимет карту.
+* Новый маршрут подхватывается со следующего звука: alsa-lib перечитывает `/etc/asound.conf` при открытии устройства.
+* Эхоподавление Алисы берёт опорный сигнал с выхода усилителя (`Loopback`), в режиме наушников он молчит —
+  для наушников это не мешает.
+
 **lsusb.** Встроенный `lsusb` — из busybox и показывает только `ID vid:pid` без названий
 (`1d6b:0002`/`1d6b:0003` — это корневые хабы xHCI). Полноценный — из Entware:
 

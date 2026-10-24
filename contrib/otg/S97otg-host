@@ -5,6 +5,9 @@
 D=/data/otg
 case "$1" in
 start)
+  # Audio: the USB card is not there yet, so this falls back to the speaker; mdev hotplug
+  # (rule in /etc/mdev.conf) switches playback to the USB card once it appears.
+  [ -x $D/audio-route.sh ] && $D/audio-route.sh auto >/dev/null 2>&1
   [ -x $D/otg-host.sh ] || exit 0
   [ -e $D/disable ] && { echo "otg-host: disabled"; exit 0; }
   if [ -e $D/boot-pending ]; then
