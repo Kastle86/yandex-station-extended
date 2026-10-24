@@ -164,6 +164,14 @@ cat /proc/asound/cards
 aplay -D hw:1,0 -f S24_3LE -r 48000 -c 2 file.wav    # формат смотрите в /proc/asound/card1/stream0
 ```
 
+**lsusb.** Встроенный `lsusb` — из busybox и показывает только `ID vid:pid` без названий
+(`1d6b:0002`/`1d6b:0003` — это корневые хабы xHCI). Полноценный — из Entware:
+
+```sh
+yse install usbutils     # lsusb с базой usb.ids, lsusb -t — дерево с драйверами
+lsusb -t 2>/dev/null     # ядро 4.9 не отдаёт rx_lanes/tx_lanes — предупреждения можно скрыть
+```
+
 **fastfetch.** [`ff-usb.sh`](https://github.com/Marker284/yandex-station-extended/blob/main/contrib/otg/ff-usb.sh)
 выдаёт по одной строке: сначала устройство, затем его разделы. Пустые слоты fastfetch скрывает сам
 (скрипт завершается с кодом 1). Добавьте в `modules` после `disk`:
