@@ -12,21 +12,35 @@
 
 ## Установка
 
-С компьютера, из клона репозитория:
+[:material-download: Скачать `yse`](https://github.com/Marker284/yandex-station-extended/raw/main/contrib/bin/yse){ .md-button .md-button--primary }
+[:material-download: Скачать установщик](https://github.com/Marker284/yandex-station-extended/raw/main/contrib/install-yse.sh){ .md-button }
+
+**Одной командой с компьютера** (Linux, macOS или WSL; нужен `adb` или `ssh`):
 
 ```sh
-adb push contrib/bin/yse /data/opt/bin/yse
-adb shell chmod +x /data/opt/bin/yse
-adb shell /data/opt/bin/yse bootstrap
+curl -fsSL https://raw.githubusercontent.com/Marker284/yandex-station-extended/main/contrib/install-yse.sh | sh -s -- 192.168.1.120
 ```
 
-`bootstrap` делается один раз: он связывает `/opt` с `/data/opt/entware`, ставит Entware и
-прописывает `PATH` в `/etc/profile.d/yse.sh`. Затем **переподключитесь по SSH** — `yse` и
-пакеты будут вызываться без полного пути.
+Установщик скачает `yse`, зальёт его на колонку по ADB (порт 5555), а если ADB недоступен —
+по SSH (порт 2222), и сразу развернёт Entware (`yse bootstrap`). Только по SSH: добавьте
+`--ssh` после IP, только по ADB — `--adb`.
+
+??? note "Вручную, без установщика"
+    ```sh
+    adb push yse /data/opt/bin/yse
+    adb shell chmod +x /data/opt/bin/yse
+    adb shell /data/opt/bin/yse bootstrap
+    ```
+
+После установки **переподключитесь по SSH** — `yse` и пакеты будут вызываться без полного пути:
 
 ```sh
 yse install htop
 ```
+
+Исходники: [`contrib/bin/yse`](https://github.com/Marker284/yandex-station-extended/blob/main/contrib/bin/yse),
+[`contrib/install-yse.sh`](https://github.com/Marker284/yandex-station-extended/blob/main/contrib/install-yse.sh).
+Обновить `yse` до новой версии — запустить установщик ещё раз.
 
 ## Команды
 

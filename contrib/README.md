@@ -17,6 +17,7 @@
 | **`dropbearkey`**| 2.3 МБ | [Скачать dropbearkey](https://github.com/Marker284/yandex-station-extended/raw/main/contrib/bin/dropbearkey) | Генератор ED25519/RSA хост-ключей для Dropbear. |
 | **`nano`** | 325 КБ | [Скачать nano](https://github.com/Marker284/yandex-station-extended/raw/main/contrib/bin/nano) | Удобный консольный текстовый редактор. |
 | **`zsh`** | 3.6 МБ | [Скачать zsh](https://github.com/Marker284/yandex-station-extended/raw/main/contrib/bin/zsh-5.9.2-aarch64-musl) | Мощная командная оболочка Zsh (версия 5.9.2). |
+| **`yse`** | 20 КБ | [Скачать yse](https://github.com/Marker284/yandex-station-extended/raw/main/contrib/bin/yse) | Пакетный менеджер: Entware + `.yap`-пакеты с GitHub. Установщик с ПК — [`install-yse.sh`](https://github.com/Marker284/yandex-station-extended/raw/main/contrib/install-yse.sh), [инструкция](https://hackalice.me/start/packages/). |
 
 ---
 

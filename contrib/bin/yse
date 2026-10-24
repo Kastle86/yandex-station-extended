@@ -1,5 +1,8 @@
 #!/bin/sh
 # yse — Yandex Station Extended package manager (клиент для устройства)
+# Скачать / обновить: https://github.com/Marker284/yandex-station-extended/blob/main/contrib/bin/yse
+# Установщик с ПК:    https://github.com/Marker284/yandex-station-extended/blob/main/contrib/install-yse.sh
+# Документация:       https://hackalice.me/start/packages/
 # Два источника пакетов, всё ставится в /data/opt (rootfs только для чтения):
 #   ent — Entware (opkg): тысячи пакетов под embedded ARM, self-contained в /opt;
 #   yap — реестры .yap на GitHub (формат yapkg: index.json + архивы с plugin.toml),
@@ -358,6 +361,6 @@ case "$cmd" in
     sources)         cmd_sources "$@" ;;
     env)             cmd_env "$@" ;;
     help|-h|--help)  usage ;;
-    version|--version) echo "yse 0.4.0 (Entware + .yap, arch=$ARCH, feed=$(ent_arch))" ;;
+    version|--version) echo "yse 0.4.0 (Entware + .yap, arch=$ARCH, feed=$(ent_arch))"; echo "https://hackalice.me/start/packages/" ;;
     *) err "неизвестная команда: $cmd"; usage; exit 1 ;;
 esac
