@@ -10,4 +10,6 @@
 | 3. [Пакеты `yse`](packages.md) | Entware: тысячи готовых программ | ~5 мин |
 | 4. [Если что-то сломалось](recovery.md) | диагностика и откат | — |
 
+Альтернатива первому шагу: [root с Android через AliceBridge](root-android.md).
+
 Дальше — [рецепты](../recipes/index.md).
