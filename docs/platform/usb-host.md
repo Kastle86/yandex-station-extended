@@ -164,6 +164,24 @@ cat /proc/asound/cards
 aplay -D hw:1,0 -f S24_3LE -r 48000 -c 2 file.wav    # формат смотрите в /proc/asound/card1/stream0
 ```
 
+**fastfetch.** [`ff-usb.sh`](https://github.com/Marker284/yandex-station-extended/blob/main/contrib/otg/ff-usb.sh)
+выдаёт по одной строке: сначала устройство, затем его разделы. Пустые слоты fastfetch скрывает сам
+(скрипт завершается с кодом 1). Добавьте в `modules` после `disk`:
+
+```jsonc
+{ "type": "command", "key": "USB OTG", "keyColor": "38;2;122;85;255", "text": "/data/otg/ff-usb.sh 1" },
+{ "type": "command", "key": "       ", "text": "/data/otg/ff-usb.sh 2" },
+{ "type": "command", "key": "       ", "text": "/data/otg/ff-usb.sh 3" },
+{ "type": "command", "key": "       ", "text": "/data/otg/ff-usb.sh 4" },
+```
+
+```text
+USB OTG: Burst Elite 240G · 223.6 GiB · USB 480 Mbit/s
+       : ├ Ventoy  17.2 GiB / 100.0 GiB (17%) · exfat
+       : ├ VTOYEFI  27 MiB / 32 MiB (86%) · vfat
+       : └ DATA  4 MiB / 123.5 GiB (0%) · exfat
+```
+
 ---
 
 ## 🧯 Диагностика
