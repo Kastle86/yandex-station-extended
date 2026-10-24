@@ -104,11 +104,151 @@ adb shell            # приглашение «#» — это root
 
 ---
 
+
+## Вариант 2. Свой стенд на ПК { #local-stand }
+
+Альтернатива серверу `179.254.167.126`: DNS и HTTPS поднимаются на вашем компьютере
+(Windows, Linux или macOS), и колонка получает **настоящий ответ Яндекса**, в который
+добавлено `adbd.remoteActivation`. Никаких внешних сервисов — только свой ПК и роутер
+со сменным DNS.
+
+!!! info "Чем отличается от варианта 1"
+    Первый вариант ходит на чужой сервер разблокировки. Второй — полностью локальный:
+    вы видите запросы колонки, можете обновлять прошивку и включать ADB повторно после
+    сброса. Подходит для тех, кто не хочет зависеть от чужого сервера.
+
+### 1. Подготовьте ПК
+
+=== "Windows 10/11"
+    1. Установите [Python 3.8+](https://www.python.org/downloads/) с галочкой
+       **Add python.exe to PATH**.
+    2. Скачайте архив стенда и распакуйте, например в `C:\lite-kit`.
+    3. Порты **53 (UDP/TCP), 80, 443** должны быть свободны (порт 53 иногда занимает
+       служба «Общий доступ к подключению к Интернету»).
+
+=== "Linux"
+    ```sh
+    sudo apt install dnsmasq python3 openssl dnsutils
+    git clone https://github.com/krevetkqqq/lite-kit ~/lite-kit
+    ```
+    Убедитесь, что порт 53 свободен (`systemd-resolved`/`avahi` не мешают).
+
+=== "macOS"
+    ```sh
+    brew install dnsmasq
+    git clone https://github.com/krevetkqqq/lite-kit ~/lite-kit
+    ```
+
+### 2. Запустите стенд
+
+=== "Windows"
+    ```powershell
+    cd C:\lite-kit
+    .\start.ps1        # сам запросит права администратора
+    ```
+
+=== "Linux / macOS"
+    ```sh
+    cd ~/lite-kit
+    sudo ./start.sh
+    ```
+
+Скрипт напечатает **IP этого ПК** и проверит DNS. В логе (`log\server.log`,
+`log\yandex.log`, `log\local.log`, `log\dns.log`) видно каждый запрос колонки.
+
+### 3. Включите DNS на роутере
+
+DNS 1 = **IP компьютера со стендом**, DNS 2 — пусто. Способы те же, что в
+[варианте 1](#dns-unlock): веб-интерфейс роутера, `ip host` на Keenetic, DNAT на OpenWrt.
+
+Проверка с ПК:
+
+```sh
+nslookup quasar.yandex.net <IP-роутера>   # должен вернуть IP компьютера
+```
+
+### 4. Привяжите колонку в приложении
+
+Действия те же, что в варианте 1: сброс → «Дом с Алисой» → «+» → «Устройство с Алисой»
+→ дойти до выбора Wi-Fi. **DNS включайте только на экране выбора сети** — иначе
+приложение не сможет привязать колонку.
+
+??? example "Скриншоты: весь путь до экрана Wi-Fi (10 шагов)"
+    <div class="shots">
+      <img src="../../assets/images/root-local/01.jpeg" alt="Мой дом → плюс">
+      <img src="../../assets/images/root-local/02.jpeg" alt="Добавить → Устройство с Алисой">
+      <img src="../../assets/images/root-local/03.jpeg" alt="Выбор модели: Лайт">
+      <img src="../../assets/images/root-local/04.jpeg" alt="Выбор дома → Выбрать">
+      <img src="../../assets/images/root-local/05.jpeg" alt="Проверка мигания → Станция мигает">
+      <img src="../../assets/images/root-local/06.jpeg" alt="Адрес → Напишу адрес потом">
+      <img src="../../assets/images/root-local/07.jpeg" alt="Bluetooth не сработал → Подключить иначе">
+      <img src="../../assets/images/root-local/08.jpeg" alt="Колонка не найдена → Станция мигает">
+      <img src="../../assets/images/root-local/09.jpeg" alt="Экран Wi-Fi: здесь включаем DNS">
+      <img src="../../assets/images/root-local/10.jpeg" alt="Поднесите телефон → Прогнать звук">
+    </div>
+
+    <style>
+    .shots {
+      display: flex;
+      gap: .6rem;
+      overflow-x: auto;
+      scroll-snap-type: x mandatory;
+      padding-bottom: .4rem;
+    }
+    .shots img {
+      flex: 0 0 auto;
+      width: min(78vw, 320px);
+      border-radius: 12px;
+      scroll-snap-align: center;
+      box-shadow: 0 6px 22px rgba(0,0,0,.35);
+    }
+    .shots img:target { outline: 2px solid var(--md-accent-fg-color); }
+    </style>
+
+Листайте вправо — это десять последовательных экранов приложения, девятый и есть
+момент, когда нужно включить DNS.
+
+После «Подключиться» колонка сходит на ваш ПК, получит конфиг с `adbd` и откроет порт.
+
+### 5. Проверьте ADB
+
+```sh
+adb connect <IP-колонки>:5555
+adb shell id          # uid=0(root)
+```
+
+Если порт закрыт:
+
+```powershell
+.\check.ps1           # Windows
+```
+```sh
+./check.sh            # Linux / macOS
+```
+
+В логе стенда должно быть:
+
+```text
+>>> [SYNC-REAL→] payload …, adbd: config.system_config.adbd=on, …, top.adbd=on
+```
+
+### 6. Сразу закройте доступ
+
+Пока не вернули DNS — переходите к [шагу 2](ssh.md): SSH и отключение обновлений.
+Стенд сам прошивку не навязывает: он отдаёт только ответ Яндекса (плюс `adbd`),
+а обновления закрываются на [шаге 2](ssh.md).
+
+---
+
 ## Совместимость
 
 | Модель | Статус |
 |---|---|
 | Лайт, Лайт 2, Мини 1, Мини 2, Мини 3, Миди, Станция 2, Стрит, Умный хаб | ✅ проверено |
+
+!!! note "Мини 2"
+    Мини 2 получена рутом по этой инструкции; версия прошивки не зафиксирована
+    (на момент проверки — актуальная стоковая), дальше ADB и SSH работали штатно.
 | Станция Макс, Станция 1-го поколения | ❌ Android-платформа, способ не работает |
 
 ---
