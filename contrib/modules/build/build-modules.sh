@@ -41,12 +41,12 @@ make -j"$(nproc)" HOSTCFLAGS=-fcommon modules_prepare >/dev/null
 grep -q '"4.9.y"' include/generated/utsrelease.h || { echo "vermagic не 4.9.y"; exit 1; }
 
 K="-Wno-error -fno-stack-protector -Wno-address-of-packed-member -Wno-array-bounds -Wno-stringop-overflow -Wno-format-truncation"
-for d in drivers/scsi drivers/net drivers/usb/storage sound/core sound/usb; do
+for d in drivers/scsi drivers/net drivers/usb/storage drivers/usb/class sound/core sound/usb; do
 	make -j"$(nproc)" HOSTCFLAGS=-fcommon KCFLAGS="$K" M=$d modules >/dev/null
 done
 for m in drivers/scsi/sd_mod drivers/usb/storage/usb-storage drivers/usb/storage/uas \
          drivers/net/mii drivers/net/usb/usbnet drivers/net/usb/cdc_ether drivers/net/usb/cdc_ncm \
-         drivers/net/usb/r8152 drivers/net/usb/ax88179_178a drivers/net/usb/asix \
+         drivers/net/usb/r8152 drivers/net/usb/ax88179_178a drivers/net/usb/asix drivers/usb/class/usblp \
          sound/core/snd-hwdep sound/core/snd-rawmidi sound/usb/snd-usbmidi-lib sound/usb/snd-usb-audio; do
 	aarch64-linux-gnu-strip --strip-debug -o "$HERE/out/$(basename $m).ko" $m.ko
 done

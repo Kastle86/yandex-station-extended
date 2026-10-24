@@ -1,14 +1,17 @@
 #!/bin/sh
 # Установка USB Host (OTG) на Станцию Лайт (Yandex Station Micro, Amlogic AXG, ядро 4.9.68).
 #
-# Запуск на колонке из каталога, куда скопированы contrib/otg и contrib/modules
-# (например: scp -r contrib/otg contrib/modules root@<ip>:/data/otg-src/):
+# Запуск на колонке из каталога, куда скопированы contrib/otg, contrib/modules и contrib/bin/fuse2fs
+# (например: scp -r contrib/otg contrib/modules root@<ip>:/data/otg-src/ &&
+#  scp contrib/bin/fuse2fs root@<ip>:/data/otg-src/bin/):
 #   sh /data/otg-src/otg/install.sh
 #
 # Что делает:
 #   /data/otg/otg-host.sh      — переключение Type-C в host + загрузка драйверов
 #   /data/otg/usb-mount.sh     — монтирование разделов в /tmp/usb/<метка>
 #   /data/otg/ff-usb.sh        — строки «USB OTG» для fastfetch
+#   /data/otg/zram-swap.sh     — сжатый swap в памяти (включается вместе с Entware на USB)
+#   /data/otg/bin/fuse2fs      — ext4 через FUSE (в ядре ext4 нет)
 #   /data/otg/audio-route.sh   — весь звук на USB-карту / обратно на динамик (+ правило mdev,
 #                                команда usb-audio on|off|status в /usr/bin)
 #   /data/otg/modules/*.ko     — модули, собранные под ядро Яндекса
@@ -23,10 +26,11 @@ grep -q "yandex,station-micro" /proc/device-tree/compatible 2>/dev/null \
 [ "$(uname -r)" = "4.9.68" ] || { echo "Ядро $(uname -r), модули собраны под 4.9.68 — выходим."; exit 1; }
 command -v devmem >/dev/null || { echo "Нет devmem в busybox — выходим."; exit 1; }
 
-mkdir -p $D/modules
-cp "$SRC/otg/otg-host.sh" "$SRC/otg/usb-mount.sh" "$SRC/otg/ff-usb.sh" "$SRC/otg/audio-route.sh" $D/
+mkdir -p $D/modules $D/bin
+cp "$SRC/otg/otg-host.sh" "$SRC/otg/usb-mount.sh" "$SRC/otg/ff-usb.sh" "$SRC/otg/audio-route.sh" "$SRC/otg/zram-swap.sh" $D/
 cp "$SRC"/modules/*.ko $D/modules/
-chmod +x $D/otg-host.sh $D/usb-mount.sh $D/ff-usb.sh $D/audio-route.sh
+[ -f "$SRC/bin/fuse2fs" ] && cp "$SRC/bin/fuse2fs" $D/bin/fuse2fs && chmod +x $D/bin/fuse2fs
+chmod +x $D/otg-host.sh $D/usb-mount.sh $D/ff-usb.sh $D/audio-route.sh $D/zram-swap.sh
 ( cd "$SRC/modules" && sha256sum -c SHA256SUMS >/dev/null ) || { echo "Контрольные суммы модулей не сошлись."; exit 1; }
 
 mount -o remount,rw /
