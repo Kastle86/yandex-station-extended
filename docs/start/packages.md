@@ -1,8 +1,14 @@
 # Шаг 3. Пакеты: `yse`
 
-`yse` — маленький шелл-скрипт поверх [Entware](https://github.com/Entware/Entware/wiki/Home)
-(opkg): тысячи готовых пакетов для ARM — `htop`, `tmux`, `nano`, `mc`, `python`, `git`,
-`exfat-fuse`, `usbutils`… Всё ставится в `/data/opt`, системные файлы не трогаются.
+`yse` — маленький шелл-скрипт, который ставит пакеты из двух источников:
+
+- **Entware** (opkg) — тысячи пакетов для ARM: `htop`, `tmux`, `nano`, `mc`, `python`, `git`,
+  `exfat-fuse`, `usbutils`…;
+- **реестры `.yap` на GitHub** — готовые сборки под Станции, по умолчанию
+  [yapkg](https://github.com/nyakokitsu/yapkg) (~65 пакетов: `btop`, `jq`, `rclone`, `restic`,
+  `wireguard`, `ripgrep`, `sd`…).
+
+Всё ставится в `/data/opt`, системные файлы не трогаются.
 
 ## Установка
 
@@ -25,18 +31,57 @@ yse install htop
 ## Команды
 
 ```sh
-yse bootstrap            # развернуть Entware (один раз)
-yse update               # обновить список пакетов
+yse bootstrap            # развернуть Entware (один раз; нужен и для .yap)
+yse update               # обновить списки Entware и .yap-реестров
 yse install <pkg>...     # установить
+yse install yap:<pkg>    # явно из .yap-реестра
+yse install ent:<pkg>    # явно из Entware
 yse remove  <pkg>...     # удалить
-yse search  <строка>     # найти
+yse search  <строка>     # найти (у .yap-пакетов пометка [yap/<реестр>])
 yse info    <pkg>
 yse list [-a]            # установленные / все доступные
-yse upgrade              # обновить установленные
+yse upgrade              # обновить установленные (оба источника)
+yse sources              # список .yap-реестров
 eval "$(yse env)"        # PATH для текущей сессии без переподключения
 ```
 
-Переопределить архитектуру: `YSE_ARCH`, зеркало: `YSE_ENT_MIRROR`.
+Без префикса пакет берётся из Entware, а если там его нет — из `.yap`. Чтобы наоборот:
+`YSE_PREFER=yap`. Архитектура — `YSE_ARCH`, зеркало Entware — `YSE_ENT_MIRROR`.
+
+## Пакеты `.yap` с GitHub { #yap }
+
+```sh
+yse search jq
+yse install yap:btop
+btop
+```
+
+- Пакет скачивается с GitHub, проверяется по **sha256** из индекса, распаковывается в
+  `/data/opt/yap/<имя>/`, а команда появляется в `/data/opt/bin`.
+- Перед установкой проверяется свободное место — пакеты бывают большими (`node` — 26 МБ).
+- Чужие файлы в `/data/opt/bin` не перезаписываются: например, если `fastfetch` вы положили
+  туда сами, `yap:fastfetch` откажется ставиться.
+- Если та же команда есть в Entware, в PATH раньше окажется версия из Entware — `yse`
+  предупредит и подскажет полный путь.
+- Только `aarch64` (на Стрит не подходит).
+
+### Свой реестр
+
+Реестры перечисляются в `/data/opt/etc/yse/sources`, по одному на строку: имя и адрес
+`index.json`. Пока файла нет, используется yapkg.
+
+```text
+yapkg   https://raw.githubusercontent.com/nyakokitsu/yapkg/registry/index.json
+my      https://raw.githubusercontent.com/<you>/<repo>/registry/index.json
+```
+
+После правки — `yse update`.
+
+!!! warning "Не ставьте на Станцию Лайт клиент `apkg` в режиме Buildroot"
+    Пакеты yapkg перепакованы из [initialfox/yandex-station-repo](https://github.com/initialfox/yandex-station-repo),
+    у которого есть свой клиент `apkg`. На Buildroot он ставит в `/usr/local/bin` на
+    корневой ФС (на Лайт там свободно ~12 МБ) и в `/opt`, который у нас занят Entware.
+    Те же пакеты безопасно ставит `yse install yap:<pkg>`.
 
 ## Модели
 
@@ -53,7 +98,8 @@ eval "$(yse env)"        # PATH для текущей сессии без пер
 ## Удалить { #uninstall }
 
 ```sh
-rm -rf /data/opt/bin/yse /data/opt/entware
+for c in /data/opt/bin/*; do grep -q '^# yse-yap ' "$c" 2>/dev/null && rm "$c"; done   # запускалки .yap
+rm -rf /data/opt/bin/yse /data/opt/entware /data/opt/yap /data/opt/var/yse /data/opt/etc/yse
 mount -o remount,rw / && rm /opt && mkdir /opt && sync && mount -o remount,ro /
 ```
 
@@ -68,5 +114,11 @@ mount -o remount,rw / && rm /opt && mkdir /opt && sync && mount -o remount,ro /
 - `bootstrap` задаёт записываемый `HOME=/data/opt/home` (домашний каталог root лежит на
   read-only разделе) и превращает `/opt/etc/shells` в обычный файл — иначе установка
   шеллов (`fish`, `bash`, `zsh`) падает с «Read-only file system».
+- `.yap` — это `tar.gz` с `plugin.toml` (`id`, `version`, `[launch] path` — главный бинарник,
+  `[compatibility] features = ["arch.aarch64"]`) и папкой пакета. Пакеты yapkg собраны на musl
+  и везут свои библиотеки: обёртка `<пакет>-run` запускает бинарник через собственный
+  `ld-musl` — поэтому они не зависят ни от системы, ни от Entware. Индекс реестра — `index.json`
+  со ссылкой и sha256 каждого архива.
+- HTTPS busybox не умеет, поэтому `.yap` качаются через `curl` из Entware (`yse` поставит его сам).
 
 Дальше: **[если что-то сломалось](recovery.md)** · **[рецепты](../recipes/index.md)**.
