@@ -179,36 +179,36 @@
     приложение не сможет привязать колонку.
 
     ??? example "Скриншоты: весь путь до экрана Wi-Fi (10 шагов)"
-    <div class="shots">
-      <img src="../../assets/images/root-local/01.jpeg" alt="Мой дом → плюс">
-      <img src="../../assets/images/root-local/02.jpeg" alt="Добавить → Устройство с Алисой">
-      <img src="../../assets/images/root-local/03.jpeg" alt="Выбор модели: Лайт">
-      <img src="../../assets/images/root-local/04.jpeg" alt="Выбор дома → Выбрать">
-      <img src="../../assets/images/root-local/05.jpeg" alt="Проверка мигания → Станция мигает">
-      <img src="../../assets/images/root-local/06.jpeg" alt="Адрес → Напишу адрес потом">
-      <img src="../../assets/images/root-local/07.jpeg" alt="Bluetooth не сработал → Подключить иначе">
-      <img src="../../assets/images/root-local/08.jpeg" alt="Колонка не найдена → Станция мигает">
-      <img src="../../assets/images/root-local/09.jpeg" alt="Экран Wi-Fi: здесь включаем DNS">
-      <img src="../../assets/images/root-local/10.jpeg" alt="Поднесите телефон → Прогнать звук">
-    </div>
+        <div class="shots">
+          <img src="../../assets/images/root-local/01.jpeg" alt="Мой дом → плюс">
+          <img src="../../assets/images/root-local/02.jpeg" alt="Добавить → Устройство с Алисой">
+          <img src="../../assets/images/root-local/03.jpeg" alt="Выбор модели: Лайт">
+          <img src="../../assets/images/root-local/04.jpeg" alt="Выбор дома → Выбрать">
+          <img src="../../assets/images/root-local/05.jpeg" alt="Проверка мигания → Станция мигает">
+          <img src="../../assets/images/root-local/06.jpeg" alt="Адрес → Напишу адрес потом">
+          <img src="../../assets/images/root-local/07.jpeg" alt="Bluetooth не сработал → Подключить иначе">
+          <img src="../../assets/images/root-local/08.jpeg" alt="Колонка не найдена → Станция мигает">
+          <img src="../../assets/images/root-local/09.jpeg" alt="Экран Wi-Fi: здесь включаем DNS">
+          <img src="../../assets/images/root-local/10.jpeg" alt="Поднесите телефон → Прогнать звук">
+        </div>
 
-    <style>
-    .shots {
-      display: flex;
-      gap: .6rem;
-      overflow-x: auto;
-      scroll-snap-type: x mandatory;
-      padding-bottom: .4rem;
-    }
-    .shots img {
-      flex: 0 0 auto;
-      width: min(78vw, 320px);
-      border-radius: 12px;
-      scroll-snap-align: center;
-      box-shadow: 0 6px 22px rgba(0,0,0,.35);
-    }
-    .shots img:target { outline: 2px solid var(--md-accent-fg-color); }
-    </style>
+        <style>
+        .shots {
+          display: flex;
+          gap: .6rem;
+          overflow-x: auto;
+          scroll-snap-type: x mandatory;
+          padding-bottom: .4rem;
+        }
+        .shots img {
+          flex: 0 0 auto;
+          width: min(78vw, 320px);
+          border-radius: 12px;
+          scroll-snap-align: center;
+          box-shadow: 0 6px 22px rgba(0,0,0,.35);
+        }
+        .shots img:target { outline: 2px solid var(--md-accent-fg-color); }
+        </style>
 
     Листайте вправо — это десять последовательных экранов приложения, девятый и есть
     момент, когда нужно включить DNS.
