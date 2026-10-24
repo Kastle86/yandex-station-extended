@@ -9,12 +9,16 @@
 #   audio-route.sh speaker    back to the built-in speaker
 #   audio-route.sh auto       usb if a USB card is present, else speaker (boot / mdev hotplug)
 #   audio-route.sh gain [dB]  show / set the USB attenuation, e.g. "gain -25" (0 = none)
+#   audio-route.sh off        speaker now and stay there, even with a USB card plugged in
+#   audio-route.sh on         undo "off": back to automatic switching (USB card if present)
 #   audio-route.sh status
-# touch /data/otg/audio-no-usb  makes "auto" always choose the speaker.
+# install.sh links this script as /usr/bin/usb-audio, so "usb-audio off" works from any shell.
+# "off" is the file /data/otg/audio-no-usb: it makes "auto" always choose the speaker and survives reboots.
 D=/data/otg
 CONF=/etc/asound.conf
 ORIG=$D/asound.conf.orig
 GAINF=$D/audio-usb-gain-db
+NOUSB=$D/audio-no-usb
 
 usb_card(){
 	for c in /proc/asound/card[0-9]*; do
@@ -103,13 +107,16 @@ case "${1:-status}" in
 	usb)     to_usb ;;
 	speaker) to_speaker ;;
 	auto)    [ "${ACTION:-}" = remove ] && sleep 1   # mdev: let the card leave /proc/asound first
-	         if [ ! -e $D/audio-no-usb ] && usb_card >/dev/null; then to_usb; else to_speaker; fi ;;
+	         if [ ! -e $NOUSB ] && usb_card >/dev/null; then to_usb; else to_speaker; fi ;;
+	off)     touch $NOUSB; to_speaker; echo "USB audio off (back on: usb-audio on)" ;;
+	on)      rm -f $NOUSB; if usb_card >/dev/null; then to_usb; else to_speaker; fi ;;
 	gain)    if [ -n "${2:-}" ]; then
 	         	echo "$2" | grep -qE '^-?[0-9]+$' || { echo "gain: whole number of dB, e.g. -20"; exit 1; }
 	         	echo "$2" > $GAINF
 	         	case "$(current)" in hw:CARD=*) to_usb ;; esac
 	         fi
 	         echo "usb gain: $(cat $GAINF 2>/dev/null || echo -20) dB" ;;
-	status)  echo "route: $(current)"; echo "usb card: $(usb_card || echo none)"; echo "usb gain: $(cat $GAINF 2>/dev/null || echo -20) dB" ;;
-	*)       echo "usage: $0 usb|speaker|auto|gain [dB]|status"; exit 1 ;;
+	status)  echo "route: $(current)"; echo "usb card: $(usb_card || echo none)"
+	         echo "usb audio: $([ -e $NOUSB ] && echo off || echo auto)"; echo "usb gain: $(cat $GAINF 2>/dev/null || echo -20) dB" ;;
+	*)       echo "usage: $0 on|off|usb|speaker|auto|gain [dB]|status"; exit 1 ;;
 esac

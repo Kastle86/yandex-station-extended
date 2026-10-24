@@ -9,7 +9,8 @@
 #   /data/otg/otg-host.sh      — переключение Type-C в host + загрузка драйверов
 #   /data/otg/usb-mount.sh     — монтирование разделов в /tmp/usb/<метка>
 #   /data/otg/ff-usb.sh        — строки «USB OTG» для fastfetch
-#   /data/otg/audio-route.sh   — весь звук на USB-карту / обратно на динамик (+ правило mdev)
+#   /data/otg/audio-route.sh   — весь звук на USB-карту / обратно на динамик (+ правило mdev,
+#                                команда usb-audio on|off|status в /usr/bin)
 #   /data/otg/modules/*.ko     — модули, собранные под ядро Яндекса
 #   /etc/init.d/S97otg-host    — автозапуск с защитой от бутлупа
 # Старый /etc/init.d/S98usb_modules (битые модули из ранней версии гайда) удаляется.
@@ -42,6 +43,8 @@ if ! grep -q audio-route /etc/mdev.conf; then
 	echo "Правило mdev для USB-звука добавлено (вступит в силу после перезагрузки)"
 fi
 chmod +x /etc/init.d/S97otg-host
+# короткая команда: usb-audio off / on / status
+ln -sf $D/audio-route.sh /usr/bin/usb-audio
 sync
 mount -o remount,ro / || true
 
