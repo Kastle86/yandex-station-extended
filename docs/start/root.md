@@ -127,9 +127,20 @@
     **Windows 10/11**
     1. Установите [Python 3.8+](https://www.python.org/downloads/) с галочкой
        **Add python.exe to PATH**.
-    2. Скачайте архив стенда и распакуйте, например в `C:\lite-kit`.
+    2. Склонируйте стенд — [github.com/krevetkqqq/lite-kit](https://github.com/krevetkqqq/lite-kit):
+
+       ```powershell
+       git clone https://github.com/krevetkqqq/lite-kit C:\lite-kit
+       ```
+
+       Без git — скачайте ZIP и распакуйте в `C:\lite-kit`:
+       `https://github.com/krevetkqqq/lite-kit/archive/refs/heads/main.zip`
     3. Порты **53 (UDP/TCP), 80, 443** должны быть свободны (порт 53 иногда занимает
        служба «Общий доступ к подключению к Интернету»).
+
+    !!! note "Репозиторий стенда"
+        [github.com/krevetkqqq/lite-kit](https://github.com/krevetkqqq/lite-kit) — код,
+        скрипты для Windows/Linux/macOS и установщик прошивок.
 
     **Linux**
     ```sh
