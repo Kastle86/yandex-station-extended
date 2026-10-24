@@ -6,7 +6,7 @@
 периферии: отдельный ЦАП, 6 LED-зон, датчик освещённости, RTC и выход на наушники.
 
 Общие механизмы (доступ, прошивка, сеть) — в разделе
-[Платформа](../platform/architecture.md).
+[Как это устроено](../internals/architecture.md).
 
 ## Платформа в двух словах
 
@@ -49,7 +49,7 @@ mtd6 "recovery" ~50 MB
 
 NAND — Toshiba 256 МБ SLC, page 2048, OOB 128, erase 128 КБ (`NAND_ECC_NONE` по
 board-driver). rootfs — ubifs **RO** (dm-verity не применён → durable-правки
-возможны, см. [Доступ](../platform/access.md#durable)).
+возможны, см. [Доступ](../start/ssh.md)).
 
 ## Шина I2C и периферия
 
@@ -88,5 +88,5 @@ board-driver). rootfs — ubifs **RO** (dm-verity не применён → dura
 
 - Точный формат `.led` для 6 зон.
 - Отключение OTA (на снимке OTA включён) — по той же схеме, что
-  [на Лайте](../platform/access.md#ota).
+  [на Лайте](../start/ssh.md#kill-ota).
 - Карту регистров ES8156 / SY6045S через `i2cdump` (аккуратно).

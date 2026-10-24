@@ -11,7 +11,7 @@
       [Мини 2](station-mini2.md), [Мини](station-mini.md);
     - **Allwinner + Android + quasar как APK** — эта модель (и другие ТВ-ориентированные).
 
-    Многие приёмы из раздела [Платформа](../platform/architecture.md) (maind-демоны,
+    Многие приёмы из раздела [«Как это устроено»](../internals/architecture.md) (maind-демоны,
     `gst-launch`, init.d) к Android-платформе **не применимы** напрямую — там Android
     и APK. Общее — протокол **glagol** (`:1961`).
 

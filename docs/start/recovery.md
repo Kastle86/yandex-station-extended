@@ -1,0 +1,68 @@
+# Шаг 4. Если что-то сломалось
+
+Почти всё, что делается по этой вики, лежит в двух местах: `/data/opt` (свой софт) и
+`/etc/init.d/S9*` (автозапуск). Сломанное обычно чинится через ADB или SSH, которые
+стартуют раньше Алисы.
+
+## Колонка перезагружается сама
+
+Узнайте причину последней перезагрузки:
+
+```sh
+cat /sys/class/aml_info/reboot_reason     # normal | watchdog_reboot | …
+```
+
+`watchdog_reboot` — система зависла, и её перезагрузил сторожевой таймер. Почти всегда
+виноват свой модуль ядра или скрипт автозапуска.
+
+Лог ядра с прошлой загрузки обычно не сохраняется: при обычной перезагрузке
+`/etc/init.d/S98pstore-clear` очищает `pstore`. Поэтому ловите падение вживую — читайте лог
+по сети, пока воспроизводите проблему:
+
+```sh
+ssh -p 2222 root@<IP> 'cat /proc/kmsg' | tee kmsg.log
+```
+
+## Колонка зависает при загрузке
+
+Пока не стартовала Алиса, ADB уже работает (его поднимает `onboot.sh`). Отключите
+подозрительный автозапуск:
+
+```sh
+adb connect <IP>:5555
+adb shell 'mount -o remount,rw / && mv /etc/init.d/S97otg-host /data/S97otg-host.off; sync; reboot'
+```
+
+## Как откатить правки из этой вики
+
+| Что делали | Откат |
+|---|---|
+| Отключение обновлений | `sh /data/opt/yandex-noupdate.sh restore` |
+| SSH | `rm /etc/init.d/S99zdropbear` (rootfs в `rw`) |
+| USB Host (OTG) | `touch /data/otg/disable` и перезагрузка — подробнее в [USB Host](../recipes/usb-host.md) |
+| Звук в USB-карту | `/data/otg/audio-route.sh speaker`, оригиналы — `/data/otg/asound.conf.orig`, `/data/otg/mdev.conf.orig` |
+| Пакеты | `yse remove <pkg>` или [удалить `yse` целиком](packages.md#uninstall) |
+
+## Сброс к заводским настройкам
+
+Сброс кнопками ([как](root.md#dns-unlock)) очищает `/data`. Правки в корневой ФС
+(`/etc/init.d`, `/system/vendor/quasar`) он **не откатывает** — для этого используйте таблицу выше.
+
+## UART-консоль { #serial }
+
+На плате выведены площадки UART: 115200 бод, 8N1, 3.3 В. Консоль ядра — `ttyS0`.
+
+Вход по UART заблокирован: в `/etc/inittab` вместо `getty` стоит `getty_rabbit_hole`, а
+ядру передаётся `androidboot.rh_unlock=0`. В переменных U-Boot видно, что `rh_unlock=1`
+выставляется, если задана переменная `rabbit_hole_debug=1`. Этот путь авторы вики
+**не проверяли**.
+
+## Если колонка не включается совсем
+
+Загрузчик Amlogic поддерживает прошивку по USB (в окружении U-Boot есть `update` /
+`usb_burning`). Как надёжно войти в этот режим на Станциях и где взять образы —
+проверенной инструкции пока нет. Если вы это делали — [дополните страницу](../contributing.md).
+
+Для Мини 2 есть скрипт отката с дампов разделов:
+[`contrib/rollback.sh`](https://github.com/Marker284/yandex-station-extended/blob/main/contrib/rollback.sh)
+(через ADB или Amlogic Burn Tool).

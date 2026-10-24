@@ -1,4 +1,4 @@
-# Режим USB Host (OTG) и подключение периферии
+# USB Host (OTG): флешки, Ethernet, наушники
 
 Как перевести порт Type-C **Станции Лайт** в режим **USB Host** и подключить через хаб
 с питанием SSD/флешки, USB-Ethernet и USB-звуковую карту. Всё делается в рантайме:
@@ -22,90 +22,18 @@
 
 ---
 
-## ⚡ Железо и подключение
+## Железо и подключение
 
 * Type-C на Станции — **только вход питания** (sink). Повышающего преобразователя нет,
   5 В наружу колонка не отдаёт: пассивный OTG-переходник просто не заработает.
 * Нужен **USB-C хаб с Power Delivery / pass-through** (или активный OTG Y-кабель):
   блок питания — в PD-вход хаба, хаб — в Станцию. Хаб питает и колонку, и периферию,
   а линии D+/D- идут к контроллеру колонки.
-* Работает только **USB 2.0** (480 Мбит/с): USB3-PHY на этой плате не разведён.
+* Работает только **USB 2.0** (480 Мбит/с): у USB3-PHY в device-tree нет портов (`This phy has no usb port` в dmesg).
 
 ---
 
-## 🔬 Почему «просто включить OTG» не работало
-
-Порт Type-C — это **порт 1 USB2-PHY** (`usb2phy@ffe09000`). Он один, а контроллеров два:
-
-| Контроллер | Что это | Кому отдан порт по умолчанию |
-|---|---|---|
-| `dwc2_a` (`ff400000`, драйвер `dwc_otg`) | device/gadget | ✅ ему (`usb_r0.u2d_act = 1`) |
-| `dwc3` → `xhci-hcd` (`ff500000`) | host | ❌ его USB2-порт 1 **отключён** в glue-регистре (`usb_r1.u3h_host_u2_port_disable = 0x2`) |
-
-У узла `usb3phy` в device-tree `otg = <0>` — переключения по ID-пину нет (а ID-пина у Type-C-sink и
-нет). Параметр `otg_device=1` в cmdline влияет только на `dwc2` (форсирует SLAVE), к хосту
-отношения не имеет. xHCI при этом стартует, но на «пустом» порту: при попытке поднять его
-руками он видит мусорное full-speed устройство и умирает с
-`xHCI host not responding to stop endpoint command … HC died`.
-
-Переключение — 4 регистра (база `0xffe09000`, раскладка как в Amlogic `phy-aml-new-usb3.c`, `set_mode()`):
-
-| Адрес | Регистр | Было | Стало | Смысл |
-|---|---|---|---|---|
-| `0xffe09084` | `usb_r1` | `0x01002000` | `0x01000000` | включить USB2-порт 1 у xHCI |
-| `0xffe09080` | `usb_r0` | `0x8000006A` | `0x0000006A` | `u2d_act=0`: порт → xHCI |
-| `0xffe09090` | `usb_r4` | `0x00000002` | `0x00000000` | `p21_SLEEPM0=0` |
-| `0xffe09020` | `u2p_r0` (порт 1) | `0x10252000` | `0x10252060` | подтяжки 15 кОм на D+/D- (роль хоста) |
-
-Порядок важен: отвязать `dwc2_a` (`dwc_otg/unbind`) и `xhci-hcd.0.auto` (`xhci-hcd/unbind`),
-записать регистры, снова привязать `xhci-hcd.0.auto`.
-
-!!! warning "Не отвязывайте `dwc3`"
-    `echo ff500000.dwc3 > /sys/bus/platform/drivers/dwc3/unbind` даёт kernel oops в
-    `dwc3_remove` (вендорский PHY без нужных ops). Перепривязывать нужно дочерний `xhci-hcd.0.auto`.
-
----
-
-## 📦 Модули ядра
-
-В ядре Яндекса нет ни `usb-storage`, ни `sd_mod` (`CONFIG_BLK_DEV_SD` выключен — без него
-даже рабочий `usb-storage` не даст `/dev/sda`), ни сетевых USB-драйверов, ни `snd-usb-audio`.
-Встроены только хаб, HID (клавиатуры/мыши/геймпады), `cdc_acm` и `usbserial`.
-
-| Модуль | Для чего | Статус |
-|---|---|---|
-| `sd_mod`, `usb-storage`, `uas` | флешки, SSD/HDD, картридеры | ✅ |
-| `r8152` | Ethernet RTL8152/8153 (почти все хабы) | ✅ |
-| `ax88179_178a`, `asix` | Ethernet ASIX 1G / 100M | ✅ (собраны, железом не проверены) |
-| `cdc_ether`, `cdc_ncm`, `usbnet`, `mii` | CDC-адаптеры, модемы, база | ✅ |
-| `snd-usb-audio`, `snd-usbmidi-lib`, `snd-hwdep`, `snd-rawmidi` | USB-звук / ЦАП | ✅ |
-| `ext4`, `exfat`, `ntfs` в ядре | файловые системы | ❌ **нельзя**, см. ниже — используйте FUSE |
-
-### Почему модули сложно собрать правильно
-
-Исходников ядра Яндекса нет в открытом доступе. Подпись модулей должна быть `vermagic=4.9.y SMP preempt mod_unload aarch64`
-(именно `4.9.y`, хотя `uname -r` = `4.9.68`), но совпадения подписи мало — должны совпасть
-**структуры ядра**. Что пришлось учесть ([`build-modules.sh`](https://github.com/Marker284/yandex-station-extended/blob/main/contrib/modules/build/build-modules.sh)):
-
-1. База — Amlogic `buildroot-aml-4.9` (4.9.40) + stable-разница 4.9.40→4.9.68 для заголовков и нужных драйверов.
-2. Конфиг — ровно `/proc/config.gz` колонки + только новые `=m` ([`config.fragment`](https://github.com/Marker284/yandex-station-extended/blob/main/contrib/modules/build/config.fragment)).
-3. [`yandex-axg.patch`](https://github.com/Marker284/yandex-station-extended/blob/main/contrib/modules/build/yandex-axg.patch):
-    * `CONFIG_WIRELESS_EXT`/`WEXT_PRIV` — их включает вендорский Wi-Fi-драйвер, в чистом дереве они
-      пропадают, и `struct net_device` сдвигается (вероятная причина падения старых модулей);
-    * `CONFIG_AMLOGIC_PAGE_TRACE` — меняет `struct page` (`flags` делится на `s_flags`+`trace`) и `ZONES_PGOFF`;
-    * `KERNELVERSION = 4.9.y`;
-    * `snd-rawmidi`: не трогать `current->pids` (см. следующий пункт).
-4. **`struct task_struct` у Яндекса другая** (из Android/EAS-патчей): например `cred` по смещению
-   1776 вместо 1656, `mm` — 1184 вместо 1056 (сверено дизассемблированием живого ядра через `/dev/mem`).
-   Поэтому годятся только драйверы, которые **не обращаются к `current->…`** — все модули из
-   таблицы проверены на это. `ext4`/`jbd2` (`current->journal_info`) и `exfat` (`current->cred`)
-   по этой причине **не поставляются**: `exfat` проверочно уронил ядро при `mount`.
-
-Сборка воспроизводима (повторная сборка с нуля даёт байт-в-байт те же `.ko`), контрольные суммы — `contrib/modules/SHA256SUMS`.
-
----
-
-## 🚀 Установка
+## Установка
 
 1. Скопируйте `contrib/otg` и `contrib/modules` на колонку и запустите установщик:
 
@@ -145,7 +73,7 @@
 
 ---
 
-## 🎯 Использование
+## Использование
 
 **Диски.** Все разделы монтируются в `/tmp/usb/<метка>` (exFAT и NTFS — через FUSE, FAT — ядром):
 
@@ -217,7 +145,7 @@ USB OTG: Burst Elite 240G · 223.6 GiB · USB 480 Mbit/s
 
 ---
 
-## 🧯 Диагностика
+## Диагностика
 
 | Симптом | Причина |
 |---|---|
@@ -233,3 +161,75 @@ USB OTG: Burst Elite 240G · 223.6 GiB · USB 480 Mbit/s
 ```sh
 ssh -p 2222 root@<ip> 'cat /proc/kmsg' | tee kmsg.log
 ```
+
+---
+
+## Как это работает
+
+### Почему «просто включить OTG» не работало
+
+Порт Type-C — это **порт 1 USB2-PHY** (`usb2phy@ffe09000`). Он один, а контроллеров два:
+
+| Контроллер | Что это | Кому отдан порт по умолчанию |
+|---|---|---|
+| `dwc2_a` (`ff400000`, драйвер `dwc_otg`) | device/gadget | ✅ ему (`usb_r0.u2d_act = 1`) |
+| `dwc3` → `xhci-hcd` (`ff500000`) | host | ❌ его USB2-порт 1 **отключён** в glue-регистре (`usb_r1.u3h_host_u2_port_disable = 0x2`) |
+
+У узла `usb3phy` в device-tree `otg = <0>` — переключения по ID-пину нет (а ID-пина у Type-C-sink и
+нет). Параметр `otg_device=1` в cmdline влияет только на `dwc2` (форсирует SLAVE), к хосту
+отношения не имеет. xHCI при этом стартует, но на «пустом» порту: при попытке поднять его
+руками он видит мусорное full-speed устройство и умирает с
+`xHCI host not responding to stop endpoint command … HC died`.
+
+Переключение — 4 регистра (база `0xffe09000`, раскладка как в Amlogic `phy-aml-new-usb3.c`, `set_mode()`):
+
+| Адрес | Регистр | Было | Стало | Смысл |
+|---|---|---|---|---|
+| `0xffe09084` | `usb_r1` | `0x01002000` | `0x01000000` | включить USB2-порт 1 у xHCI |
+| `0xffe09080` | `usb_r0` | `0x8000006A` | `0x0000006A` | `u2d_act=0`: порт → xHCI |
+| `0xffe09090` | `usb_r4` | `0x00000002` | `0x00000000` | `p21_SLEEPM0=0` |
+| `0xffe09020` | `u2p_r0` (порт 1) | `0x10252000` | `0x10252060` | подтяжки 15 кОм на D+/D- (роль хоста) |
+
+Порядок важен: отвязать `dwc2_a` (`dwc_otg/unbind`) и `xhci-hcd.0.auto` (`xhci-hcd/unbind`),
+записать регистры, снова привязать `xhci-hcd.0.auto`.
+
+!!! warning "Не отвязывайте `dwc3`"
+    `echo ff500000.dwc3 > /sys/bus/platform/drivers/dwc3/unbind` даёт kernel oops в
+    `dwc3_remove` (вендорский PHY без нужных ops). Перепривязывать нужно дочерний `xhci-hcd.0.auto`.
+
+### Модули ядра
+
+В ядре Яндекса нет ни `usb-storage`, ни `sd_mod` (`CONFIG_BLK_DEV_SD` выключен — без него
+даже рабочий `usb-storage` не даст `/dev/sda`), ни сетевых USB-драйверов, ни `snd-usb-audio`.
+Встроены только хаб, HID (клавиатуры/мыши/геймпады), `cdc_acm` и `usbserial`.
+
+| Модуль | Для чего | Статус |
+|---|---|---|
+| `sd_mod`, `usb-storage`, `uas` | флешки, SSD/HDD, картридеры | ✅ |
+| `r8152` | Ethernet RTL8152/8153 (почти все хабы) | ✅ |
+| `ax88179_178a`, `asix` | Ethernet ASIX 1G / 100M | ✅ (собраны, железом не проверены) |
+| `cdc_ether`, `cdc_ncm`, `usbnet`, `mii` | CDC-адаптеры, модемы, база | ✅ |
+| `snd-usb-audio`, `snd-usbmidi-lib`, `snd-hwdep`, `snd-rawmidi` | USB-звук / ЦАП | ✅ |
+| `ext4`, `exfat`, `ntfs` в ядре | файловые системы | ❌ **нельзя**, см. ниже — используйте FUSE |
+
+#### Почему модули сложно собрать правильно
+
+Исходников ядра Яндекса нет в открытом доступе. Подпись модулей должна быть `vermagic=4.9.y SMP preempt mod_unload aarch64`
+(именно `4.9.y`, хотя `uname -r` = `4.9.68`), но совпадения подписи мало — должны совпасть
+**структуры ядра**. Что пришлось учесть ([`build-modules.sh`](https://github.com/Marker284/yandex-station-extended/blob/main/contrib/modules/build/build-modules.sh)):
+
+1. База — Amlogic `buildroot-aml-4.9` (4.9.40) + stable-разница 4.9.40→4.9.68 для заголовков и нужных драйверов.
+2. Конфиг — ровно `/proc/config.gz` колонки + только новые `=m` ([`config.fragment`](https://github.com/Marker284/yandex-station-extended/blob/main/contrib/modules/build/config.fragment)).
+3. [`yandex-axg.patch`](https://github.com/Marker284/yandex-station-extended/blob/main/contrib/modules/build/yandex-axg.patch):
+    * `CONFIG_WIRELESS_EXT`/`WEXT_PRIV` — их включает вендорский Wi-Fi-драйвер, в чистом дереве они
+      пропадают, и `struct net_device` сдвигается (вероятная причина падения старых модулей);
+    * `CONFIG_AMLOGIC_PAGE_TRACE` — меняет `struct page` (`flags` делится на `s_flags`+`trace`) и `ZONES_PGOFF`;
+    * `KERNELVERSION = 4.9.y`;
+    * `snd-rawmidi`: не трогать `current->pids` (см. следующий пункт).
+4. **`struct task_struct` у Яндекса другая** (из Android/EAS-патчей): например `cred` по смещению
+   1776 вместо 1656, `mm` — 1184 вместо 1056 (сверено дизассемблированием живого ядра через `/dev/mem`).
+   Поэтому годятся только драйверы, которые **не обращаются к `current->…`** — все модули из
+   таблицы проверены на это. `ext4`/`jbd2` (`current->journal_info`) и `exfat` (`current->cred`)
+   по этой причине **не поставляются**: `exfat` проверочно уронил ядро при `mount`.
+
+Сборка воспроизводима (повторная сборка с нуля даёт байт-в-байт те же `.ko`), контрольные суммы — `contrib/modules/SHA256SUMS`.

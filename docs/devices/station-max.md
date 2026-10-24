@@ -39,7 +39,7 @@ build-профиль `yandexstation_2_tv/127`). Это флагман-медиа
   `/vendor|/odm|/product/quasar`), в `/vendor/etc/init/` нет `maind/aliced/setupd`-rc —
   только стандартные Android-HAL и Amlogic-скрипты. Стек quasar распространён **как
   Android-приложения** (`com.yandex.io.sdk`, `com.yandex.tv.alice` и др.). Поэтому
-  приёмы из раздела [Платформа](../platform/architecture.md) (maind-демоны, `gst-launch`,
+  приёмы из раздела [«Как это устроено»](../internals/architecture.md) (maind-демоны, `gst-launch`,
   init.d, `activate_adb.sh`/`launch.json`) и quasar-root-kit здесь **неприменимы**.
 - **Закрытая загрузка.** AVB 1.1 (Android Verified Boot) + **dm-verity (enforcing)** на
   `/vendor` и `/` + **SELinux enforcing**. Правки системных разделов ломают verity.

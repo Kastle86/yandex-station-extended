@@ -1,0 +1,133 @@
+#!/bin/sh
+# yse — Yandex Station Extended package manager (клиент для устройства)
+# Тонкая обёртка над Entware (opkg): публичный репозиторий готовых пакетов под
+# embedded ARM, self-contained в /opt. Ставит в /data/opt (rootfs только для чтения).
+#
+#   yse bootstrap              развернуть Entware (один раз)
+#   yse update                 обновить индекс пакетов
+#   yse install <pkg>...       установить
+#   yse remove  <pkg>...       удалить
+#   yse list [-a]              установленные (или -a: все доступные)
+#   yse search <строка>
+#   yse info <pkg>
+#   yse upgrade                обновить установленные
+#   yse env                    окружение для текущей сессии: eval "$(yse env)"
+#   yse help
+#
+set -u
+
+# ---------- конфигурация ----------
+YSE_ROOT="${YSE_ROOT:-/data/opt}"
+OPT=/opt
+OPKG="$OPT/bin/opkg"
+ENT_MIRROR="${YSE_ENT_MIRROR:-http://bin.entware.net}"
+
+# арка (override через YSE_ARCH)
+if [ -n "${YSE_ARCH:-}" ]; then ARCH="$YSE_ARCH"; else
+    case "$(uname -m 2>/dev/null)" in
+        aarch64|arm64) ARCH=aarch64 ;;
+        armv7l|armv6l|arm) ARCH=armv7 ;;
+        *) ARCH="$(uname -m)" ;;
+    esac
+fi
+ent_arch(){ case "$ARCH" in aarch64) echo aarch64-k3.10 ;; armv7) echo armv7sf-k3.2 ;; *) echo "" ;; esac; }
+ent_ready(){ [ -x "$OPKG" ]; }
+opkg(){ PATH="$OPT/bin:$OPT/sbin:$PATH" LD_LIBRARY_PATH="$OPT/lib" "$OPKG" "$@"; }
+
+# ---------- утилиты ----------
+msg(){ echo "[yse] $*"; }
+err(){ echo "[yse] ошибка: $*" >&2; }
+die(){ err "$*"; exit 1; }
+fetch(){ wget -q -O "$2" "$1" 2>/dev/null; }     # busybox wget (http)
+need_ent(){ ent_ready || die "Entware не развёрнут. Выполни: yse bootstrap"; }
+
+# PATH для /data/opt/bin и /opt/bin через /etc/profile.d (rootfs rw)
+ensure_profile(){
+    pf=/etc/profile.d/yse.sh
+    [ -f "$pf" ] && return 0
+    rw=0; [ -w /etc ] || { mount -o remount,rw / 2>/dev/null && rw=1; }
+    if { printf '%s\n' \
+            '[ -d /data/opt/bin ] && PATH="/data/opt/bin:$PATH"' \
+            '[ -d /opt/bin ] && PATH="/opt/bin:/opt/sbin:$PATH"' \
+            'export PATH' \
+            'export HOME=/data/opt/home; mkdir -p "$HOME" 2>/dev/null' \
+            '[ -r /opt/etc/profile ] && . /opt/etc/profile'; } > "$pf" 2>/dev/null; then
+        chmod 644 "$pf" 2>/dev/null; msg "PATH прописан в $pf (подхватится при следующем входе)"
+    else err "не удалось записать $pf (PATH не прописан)"; fi
+    [ "$rw" = 1 ] && { sync; mount -o remount,ro / 2>/dev/null; }
+}
+
+# ---------- команды ----------
+# /opt должен указывать в записываемое /data/opt/entware (на заводе /opt — пустой
+# каталог на RO-rootfs, его надо заменить симлинком)
+ensure_opt(){
+    target="$YSE_ROOT/entware"
+    mkdir -p "$target"
+    [ -L "$OPT" ] && return 0                                  # уже симлинк — ок
+    if [ -e "$OPT" ] && [ ! -d "$OPT" ]; then die "$OPT существует и это не каталог"; fi
+    if [ -d "$OPT" ] && [ -n "$(ls -A "$OPT" 2>/dev/null)" ]; then
+        die "$OPT — непустой каталог; освободи его вручную и повтори"
+    fi
+    msg "настраиваю $OPT -> $target (нужен rootfs rw)"
+    mount -o remount,rw / 2>/dev/null || die "не удалось сделать rootfs записываемым"
+    [ -d "$OPT" ] && rmdir "$OPT" 2>/dev/null
+    if ln -s "$target" "$OPT" 2>/dev/null; then sync; mount -o remount,ro / 2>/dev/null
+    else mount -o remount,ro / 2>/dev/null; die "не создать симлинк $OPT"; fi
+}
+
+cmd_bootstrap(){
+    ea="$(ent_arch)"
+    [ -n "$ea" ] || die "Entware не поддерживает арку '$ARCH' (есть aarch64 и armv7)"
+    ensure_profile
+    if ent_ready; then msg "Entware уже установлен ($OPKG)"; opkg update; return 0; fi
+    ensure_opt
+    url="$ENT_MIRROR/$ea/installer/generic.sh"
+    msg "Entware bootstrap ($ea): $url"
+    fetch "$url" /tmp/entware-generic.sh || die "не скачать установщик. busybox wget без TLS: если зеркало редиректит на https — поставь Entware с помощью хоста или задай http-зеркало через YSE_ENT_MIRROR"
+    [ -s /tmp/entware-generic.sh ] || die "установщик пуст"
+    sh /tmp/entware-generic.sh || die "установщик Entware завершился с ошибкой"
+    ent_ready || die "opkg не появился в $OPKG"
+    # /opt/etc/shells симлинкован на RO /etc/shells -> сделать реальным файлом,
+    # иначе postinst shell-пакетов (fish/bash/zsh) падает с Read-only
+    if [ -L /opt/etc/shells ]; then
+        c="$(cat /opt/etc/shells 2>/dev/null)"; rm -f /opt/etc/shells
+        printf '%s\n' "$c" > /opt/etc/shells 2>/dev/null && msg "/opt/etc/shells -> реальный файл"
+    fi
+    opkg update && msg "Entware готов. opkg: $OPKG, пакеты в $OPT" || err "opkg update не прошёл (проверь сеть)"
+}
+
+# вывести строки окружения для текущей сессии: eval "$(yse env)"
+cmd_env(){
+    echo 'export PATH="/data/opt/bin:/opt/bin:/opt/sbin:$PATH"'
+    echo 'export HOME=/data/opt/home; mkdir -p "$HOME" 2>/dev/null'
+    [ -r /opt/etc/profile ] && echo '[ -r /opt/etc/profile ] && . /opt/etc/profile'
+}
+cmd_update(){ need_ent; opkg update; }
+cmd_install(){ [ $# -ge 1 ] || die "yse install <pkg>..."; need_ent; opkg install "$@"; }
+cmd_remove(){ [ $# -ge 1 ] || die "yse remove <pkg>..."; need_ent; opkg remove "$@"; }
+cmd_search(){ [ $# -ge 1 ] || die "yse search <строка>"; need_ent; opkg find "*$1*"; }
+cmd_info(){ [ $# -ge 1 ] || die "yse info <pkg>"; need_ent; opkg info "$1"; }
+cmd_upgrade(){ need_ent; opkg upgrade; }
+cmd_list(){
+    need_ent
+    if [ "${1:-}" = "-a" ] || [ "${1:-}" = "--all" ]; then opkg list
+    else opkg list-installed; fi
+}
+
+usage(){ sed -n '2,20p' "$0" | sed 's/^# \{0,1\}//'; }
+
+cmd="${1:-help}"; [ $# -ge 1 ] && shift
+case "$cmd" in
+    bootstrap|setup) cmd_bootstrap "$@" ;;
+    update)          cmd_update "$@" ;;
+    install|add|i)   cmd_install "$@" ;;
+    remove|rm|del)   cmd_remove "$@" ;;
+    list|ls)         cmd_list "$@" ;;
+    search|find)     cmd_search "$@" ;;
+    info|show)       cmd_info "$@" ;;
+    upgrade|up)      cmd_upgrade "$@" ;;
+    env)             cmd_env "$@" ;;
+    help|-h|--help)  usage ;;
+    version|--version) echo "yse 0.3.0 (Entware, arch=$ARCH, feed=$(ent_arch))" ;;
+    *) err "неизвестная команда: $cmd"; usage; exit 1 ;;
+esac

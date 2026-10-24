@@ -79,9 +79,41 @@ plugins:
       lang:
         - ru
         - en
+  # старые адреса страниц (до реорганизации) продолжают работать
+  - redirects:
+      redirect_maps:
+        platform/access.md: start/root.md
+        platform/unbrick.md: start/recovery.md
+        packages.md: start/packages.md
+        platform/usb-host.md: recipes/usb-host.md
+        projects.md: recipes/index.md
+        projects/airplay.md: recipes/airplay.md
+        projects/custom-sounds.md: recipes/sounds.md
+        projects/chatgpt-proxy.md: recipes/llm.md
+        platform/subscription-lock.md: recipes/standalone.md
+        platform/architecture.md: internals/architecture.md
+        platform/network.md: internals/network.md
+        platform/quasar-api.md: internals/network.md
+        platform/gotchas.md: internals/gotchas.md
+        platform/toolchain.md: internals/toolchain.md
 
 nav:
   - Главная: index.md
+  - Начало работы:
+      - start/index.md
+      - 1. Получение root: start/root.md
+      - 2. SSH и обновления: start/ssh.md
+      - 3. Пакеты yse: start/packages.md
+      - 4. Если что-то сломалось: start/recovery.md
+  - Рецепты:
+      - recipes/index.md
+      - USB Host (OTG): recipes/usb-host.md
+      - AirPlay: recipes/airplay.md
+      - Свои звуки: recipes/sounds.md
+      - Fastfetch: recipes/fastfetch.md
+      - Подсветка: recipes/led.md
+      - Своя LLM вместо Алисы: recipes/llm.md
+      - Колонка без Яндекса: recipes/standalone.md
   - Устройства:
       - devices/index.md
       - Станция Лайт (Micro): devices/station-lite.md
@@ -95,20 +127,9 @@ nav:
       - Станция Макс: devices/station-max.md
       - Станция (1 поколения): devices/station-gen1.md
       - Умный хаб (Saturn): devices/yandex-hub.md
-  - Платформа (quasar):
-      - Архитектура прошивки: platform/architecture.md
-      - Получение доступа: platform/access.md
-      - Подписочные Станции и блокировки: platform/subscription-lock.md
-      - Раскирпичивание и восстановление: platform/unbrick.md
-      - Режим USB Host (OTG): platform/usb-host.md
-      - Спецификация Quasar API: platform/quasar-api.md
-      - Сеть и glagol: platform/network.md
-      - Сборка софта: platform/toolchain.md
-      - Подводные камни и автономность: platform/gotchas.md
-  - Пакетный менеджер yse: packages.md
-  - Рецепты и проекты:
-      - Обзор проектов: projects.md
-      - Своя LLM (ChatGPT / Claude): projects/chatgpt-proxy.md
-      - AirPlay (Shairport Sync): projects/airplay.md
-      - Кастомные звуки и Chime: projects/custom-sounds.md
+  - Как это устроено:
+      - Архитектура прошивки: internals/architecture.md
+      - Сеть и порты: internals/network.md
+      - Подводные камни: internals/gotchas.md
+      - Сборка софта: internals/toolchain.md
   - Как дополнять вики: contributing.md

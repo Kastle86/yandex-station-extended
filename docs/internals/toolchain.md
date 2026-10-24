@@ -4,24 +4,23 @@
 
 ---
 
-## 💡 Архитектурный парадокс прошивки
+## Ядро 64-бит, userspace 32-бит
 
 На большинстве современных Станций (Лайт, Мини 2, Станция 2, Миди):
 
 * **Ядро Linux — 64-битное (`aarch64`, ARMv8-A).**
 * **Системное окружение (Userspace) — 32-битное (`armhf`, glibc 2.30).**
 
-### Что из этого следует:
+Что из этого следует:
 
 1. **Статическая сборка под `aarch64-linux-musl` — лучший путь:**
    Поскольку ядро поддерживает 64-битный режим, полностью статические бинарники `aarch64` исполняются ядром напрямую и на 100% независимы от старых системных библиотек в `/lib` и `/usr/lib`.
 2. **Динамическая сборка под `armhf` (32-бит):**
-   Если программе обязательно нужны системные библиотеки прошивки (например, GStreamer, ALSA, D-Bus), её необходимо компилировать 32-битным тулчейном с привязкой к **glibc не новее 2.30**.
-   *(Именно поэтому готовый Node.js 18.20.5 запускается штатно, а Node.js 20+ падает с ошибкой `version GLIBC_2.31 not found`)*.
+   Если программе нужны системные библиотеки прошивки (GStreamer, ALSA, D-Bus), собирайте её 32-битным тулчейном под **glibc не новее 2.30**.
 
 ---
 
-## 🛠️ Сборка через Zig (рекомендуемый инструмент)
+## Сборка через Zig (рекомендуемый инструмент)
 
 [Zig](https://ziglang.org/) содержит встроенные кросс-компиляторы под все архитектуры и готовую библиотеку `musl`. Это позволяет собирать программы под ARM без установки гигабайтных кросс-тулчейнов.
 
@@ -86,7 +85,7 @@ zig objcopy --strip-all build/my_program
 
 ---
 
-## 📦 Уже проверенные и работающие утилиты
+## Уже проверенные и работающие утилиты
 
 Все готовые бинарники уже скомпилированы и выложены в репозиторий в папку [`contrib/bin/`](https://github.com/Marker284/yandex-station-extended/tree/main/contrib/bin):
 
@@ -97,12 +96,12 @@ zig objcopy --strip-all build/my_program
 | **Dropbearkey** | `aarch64` | [📥 Скачать dropbearkey](https://github.com/Marker284/yandex-station-extended/raw/main/contrib/bin/dropbearkey) | Генератор ED25519/RSA хост-ключей. |
 | **Nano** | `aarch64` | [📥 Скачать nano](https://github.com/Marker284/yandex-station-extended/raw/main/contrib/bin/nano) | Удобный консольный текстовый редактор. |
 | **Zsh** | `aarch64` | [📥 Скачать zsh](https://github.com/Marker284/yandex-station-extended/raw/main/contrib/bin/zsh-5.9.2-aarch64-musl) | Мощная командная оболочка Zsh (5.9.2). |
-| **Node.js** | `armv7l` (32-bit) | Официальный тарбол | Версия **18.20.5** (последняя под glibc 2.30). |
-| **htop / tmux** | `aarch64` / `armv7` | Установка через `yse` | Ставятся из репозитория Entware в `/data/opt/bin`. |
+| **yse** | shell | [📥 Скачать yse](https://github.com/Marker284/yandex-station-extended/raw/main/contrib/bin/yse) | Пакетный менеджер поверх Entware — [шаг 3](../start/packages.md). |
+| **htop, tmux, …** | `aarch64` / `armv7` | `yse install <pkg>` | Из Entware в `/opt`. |
 
 ---
 
-## 🚀 Заливка и запуск на колонке
+## Заливка и запуск на колонке
 
 Все собранные бинарники и библиотеки должны размещаться в доступном для записи разделе `/data`:
 
@@ -120,8 +119,7 @@ adb shell /data/opt/bin/my_program
 
 ---
 
-## 📱 Установка ADB на компьютер { #adb-install }
-<a id="adb-install"></a>
+## Установка ADB на компьютер { #adb-install }
 
 Чтобы управлять колонкой с компьютера через Android Debug Bridge:
 

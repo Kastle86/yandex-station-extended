@@ -77,7 +77,7 @@ mtd6 "recovery" 50 MB
 - **Обучение ИК:** снимать коды с пультов через `meson-ir`.
 - **Zigbee-координатор:** что за радиочип за `zigbee_control`, можно ли использовать
   как обычный Zigbee-coordinator (Z2M/ZHA).
-- Отключение OTA и durable-доступ — по общей схеме [Платформы](../platform/access.md).
+- Отключение OTA и durable-доступ — по общей схеме [Платформы](../start/root.md).
 
 ---
 

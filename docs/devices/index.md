@@ -3,7 +3,7 @@
 Раздел с разбором конкретных моделей Станций: SoC, карта флеша, I2C-периферия,
 индикация, звук и всё, что специфично именно для железа модели. Общие для всех
 Amlogic-станций механизмы (прошивка, доступ, сеть) вынесены в раздел
-[Платформа](../platform/architecture.md).
+[Как это устроено](../internals/architecture.md).
 
 ## Две аппаратные платформы
 
@@ -18,10 +18,10 @@ Amlogic-станций механизмы (прошивка, доступ, се�
 | **Amlogic / Android 9** | Amlogic (TV-класс) | Cortex-A53 @1.8 ГГц, Android 9 | quasar как APK | Станция Макс |
 | **Allwinner / Android** | Allwinner R18 (sun50iw1) | Cortex-A53, Android 6 | quasar как APK | Станция (1 пок) |
 
-Раздел [Платформа](../platform/architecture.md) описывает преимущественно
+Раздел [«Как это устроено»](../internals/architecture.md) описывает преимущественно
 **Amlogic/Buildroot** (maind, `gst-launch`, init.d) — применимо ко всем трём
 Amlogic-поколениям (с поправкой на версию ядра; Стрит вдобавок 32-битная). Общее для
-всех миров — протокол [glagol](../platform/network.md#glagol) (`:1961`).
+всех миров — протокол [glagol](../internals/network.md#glagol) (`:1961`).
 
 ## Матрица поддержки { #support-matrix }
 
@@ -66,4 +66,4 @@ Amlogic-поколениям (с поправкой на версию ядра; 
 - физические кнопки и сенсоры.
 
 Всё, что одинаково на уровне прошивки (как включается ADB, как работает OTA,
-`gst-launch`, glagol, сборка софта), — в [Платформе](../platform/architecture.md).
+`gst-launch`, glagol, сборка софта), — в [«Как это устроено»](../internals/architecture.md).

@@ -25,7 +25,7 @@
 Собраны под ядро Яндекса Станции Лайт (`4.9.68`, `vermagic=4.9.y SMP preempt mod_unload aarch64`)
 скриптом [`build/build-modules.sh`](https://github.com/Marker284/yandex-station-extended/blob/main/contrib/modules/build/build-modules.sh),
 проверены на живом устройстве. Ставятся вместе со скриптами [`contrib/otg/`](https://github.com/Marker284/yandex-station-extended/tree/main/contrib/otg)
-через `install.sh` — подробно в гайде [USB Host (OTG)](../docs/platform/usb-host.md).
+через `install.sh` — подробно в гайде [USB Host (OTG)](../docs/recipes/usb-host.md).
 
 | Модуль | Назначение | Прямая ссылка на скачивание |
 |---|---|---|

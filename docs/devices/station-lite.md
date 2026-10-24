@@ -5,7 +5,7 @@
 `0.369.1.48…20261019`).
 
 Общие для платформы вещи (доступ, прошивка, сеть) — в разделе
-[Платформа](../platform/architecture.md). Здесь — только то, что специфично для
+[Как это устроено](../internals/architecture.md). Здесь — только то, что специфично для
 железа этой модели.
 
 ## Платформа в двух словах
@@ -23,12 +23,12 @@
 | Температура | один `soc_thermal`, idle ~42 °C, пассивное охлаждение |
 | Звук | ALSA card0 `AML-AUGESOUND`, усилитель **NTP8910A** (I2C), микрофоны **PDM** |
 | Радио | **Unisoc UWE5621** (Wi-Fi 2.4/5 + BT combo, SDIO) |
-| Сеть | только Wi-Fi (`wlan0`) + Wi-Fi Direct (`p2p0`); Ethernet — через USB-хаб в [режиме USB Host](../platform/usb-host.md) |
+| Сеть | только Wi-Fi (`wlan0`) + Wi-Fi Direct (`p2p0`); Ethernet — через USB-хаб в [режиме USB Host](../recipes/usb-host.md) |
 
 !!! note "Архитектурная особенность"
     Ядро **64-битное** (aarch64), а весь userspace — **32-битный armhf**. Свой софт
     удобнее собирать статикой под **aarch64/musl** — см.
-    [Сборка софта](../platform/toolchain.md).
+    [Сборка софта](../internals/toolchain.md).
 
 ### Kernel cmdline
 
@@ -39,9 +39,9 @@ ubi.mtd=system root=ubi0:rootfs rootfstype=ubifs ubi.mtd=bkupgrade
 otg_device=1 no_console_suspend printk_no_block ramoops.pstore_en=1 ...
 ```
 
-Важные флаги: `rh_unlock=0` (gate serial-консоли, см.
-[Доступ](../platform/access.md#serial)), `otg_device=1` (USB-OTG gadget),
-`ramoops.*` (pstore для крэш-логов).
+Важные флаги: `rh_unlock=0` (закрывает вход по UART, см.
+[UART](../start/recovery.md#serial)), `otg_device=1` (Type-C в режиме device — host-режим
+включается в рантайме, см. [USB Host](../recipes/usb-host.md)), `ramoops.*` (pstore для крэш-логов).
 
 ## Карта флеша (MTD / UBI)
 
@@ -63,7 +63,7 @@ recovery, rsv, system, tee` (`instaboot` — snapshot/hibernation, `misc` — re
 
 - `/` — ubifs **RO** (раздел `system`). dm-verity в ядре есть (`CONFIG_DM_VERITY=y`),
   но на rootfs **не применён** → `mount -o remount,rw /` работает (основа durable-правок,
-  см. [Доступ](../platform/access.md#durable)).
+  см. [Доступ](../start/ssh.md)).
 - `/data` → симлинк на `/bkupgrade/data` (ubi1, RW, ~87 МБ, ubifs прозрачно жмёт) —
   сюда ставится свой софт (`/data/opt`).
 - `/tmp`, `/run`, `/dev/shm` — tmpfs. `/tee` — jffs2 RO на разделе `nv`.
@@ -118,7 +118,7 @@ RRGGBB  RRGGBB  RRGGBB   1000   # цвет ring1 ring2 ring3  +  длитель�
 
 Три hex-цвета (по одному на зону кольца) и время удержания кадра в мс. Формат
 тривиально пишется руками → можно делать свои анимации (см.
-[Рецепты](../projects.md#led)).
+[Рецепты](../recipes/led.md)).
 
 ## Звуковой тракт
 
@@ -146,6 +146,7 @@ RRGGBB  RRGGBB  RRGGBB   1000   # цвет ring1 ring2 ring3  +  длитель�
 - rootfs RW без verity → durable-правки переживают ребут.
 - Отключение OTA тремя правками rootfs — работает после перезагрузки.
 - Сетевой ADB поднимается по маркерам `/data/quasar/activate_adb_*` + `activate_network_adb`.
-- `maind --gst-launch` играет через родной GStreamer (проверен init silent-пайплайна).
+- `maind --gst-launch` играет через родной GStreamer.
+- USB Host (OTG) через хаб с питанием: флешки/SSD, Ethernet RTL8153, USB-звук — [рецепт](../recipes/usb-host.md).
 
-Подробности методов — в разделе [Платформа](../platform/architecture.md).
+Подробности методов — в разделе [«Как это устроено»](../internals/architecture.md).
