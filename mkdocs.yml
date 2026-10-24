@@ -100,6 +100,7 @@ nav:
       - Получение доступа: platform/access.md
       - Подписочные Станции и блокировки: platform/subscription-lock.md
       - Раскирпичивание и восстановление: platform/unbrick.md
+      - Режим USB Host (OTG): platform/usb-host.md
       - Спецификация Quasar API: platform/quasar-api.md
       - Сеть и glagol: platform/network.md
       - Сборка софта: platform/toolchain.md
