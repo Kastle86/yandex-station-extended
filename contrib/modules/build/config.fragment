@@ -1,0 +1,14 @@
+# Добавляется к /proc/config.gz колонки. Встроенные (=y) опции ядра не меняются —
+# только новые драйверы как модули (+ SND_USB, это просто пункт меню).
+CONFIG_AMLOGIC_PAGE_TRACE=y
+CONFIG_BLK_DEV_SD=m
+CONFIG_USB_STORAGE=m
+CONFIG_USB_UAS=m
+CONFIG_USB_USBNET=m
+CONFIG_USB_RTL8152=m
+CONFIG_USB_NET_CDCETHER=m
+CONFIG_USB_NET_CDC_NCM=m
+CONFIG_USB_NET_AX8817X=m
+CONFIG_USB_NET_AX88179_178A=m
+CONFIG_SND_USB=y
+CONFIG_SND_USB_AUDIO=m

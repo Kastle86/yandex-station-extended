@@ -1,0 +1,103 @@
+--- a/Makefile
++++ b/Makefile
+@@ -1,6 +1,6 @@
+ VERSION = 4
+ PATCHLEVEL = 9
+-SUBLEVEL = 40
++SUBLEVEL = 68
+ EXTRAVERSION =
+ NAME = Roaring Lionus
+ 
+@@ -413,7 +413,7 @@
+ # Read KERNELRELEASE from include/config/kernel.release (if it exists)
+ KERNELRELEASE = $(shell cat include/config/kernel.release 2> /dev/null)
+ KERNELRELEASE_FULL = $(shell cat include/config/kernel.release_full 2> /dev/null)
+-KERNELVERSION = $(VERSION)$(if $(PATCHLEVEL),.$(PATCHLEVEL)$(if $(SUBLEVEL),.$(SUBLEVEL)))$(EXTRAVERSION)
++KERNELVERSION = 4.9.y
+ 
+ export VERSION PATCHLEVEL SUBLEVEL KERNELRELEASE KERNELVERSION
+ export ARCH SRCARCH CONFIG_SHELL HOSTCC HOSTCFLAGS CROSS_COMPILE AS LD CC
+--- a/include/linux/mm.h
++++ b/include/linux/mm.h
+@@ -698,7 +698,11 @@
+ /* Page flags: | [SECTION] | [NODE] | ZONE | [LAST_CPUPID] | ... | FLAGS | */
+ #define SECTIONS_PGOFF		((sizeof(unsigned long)*8) - SECTIONS_WIDTH)
+ #define NODES_PGOFF		(SECTIONS_PGOFF - NODES_WIDTH)
++#if defined(CONFIG_AMLOGIC_PAGE_TRACE) && defined(CONFIG_64BIT)
++#define ZONES_PGOFF		((sizeof(unsigned int) * 8) - ZONES_WIDTH)
++#else
+ #define ZONES_PGOFF		(NODES_PGOFF - ZONES_WIDTH)
++#endif /* CONFIG_AMLOGIC_PAGE_TRACE */
+ #define LAST_CPUPID_PGOFF	(ZONES_PGOFF - LAST_CPUPID_WIDTH)
+ 
+ /*
+--- a/include/linux/mm_types.h
++++ b/include/linux/mm_types.h
+@@ -44,8 +44,18 @@
+  */
+ struct page {
+ 	/* First double word block */
++#if defined(CONFIG_AMLOGIC_PAGE_TRACE) && defined(CONFIG_64BIT)
++	union {
++		unsigned long flags;
++		struct {
++			unsigned int s_flags;
++			unsigned int trace;
++		};
++	};
++#else
+ 	unsigned long flags;		/* Atomic flags, some possibly
+ 					 * updated asynchronously */
++#endif /* CONFIG_AMLOGIC_PAGE_TRACE */
+ 	union {
+ 		struct address_space *mapping;	/* If low bit clear, points to
+ 						 * inode address_space, or NULL.
+--- a/mm/Kconfig
++++ b/mm/Kconfig
+@@ -711,3 +711,7 @@
+ 	bool
+ config ARCH_HAS_PKEYS
+ 	bool
++
++config AMLOGIC_PAGE_TRACE
++	bool "Amlogic page trace (struct page layout, matches Yandex kernel)"
++	default y
+--- a/net/wireless/Kconfig
++++ b/net/wireless/Kconfig
+@@ -1,5 +1,6 @@
+ config WIRELESS_EXT
+ 	bool
++	default y
+ 
+ config WEXT_CORE
+ 	def_bool y
+@@ -15,6 +16,7 @@
+ 
+ config WEXT_PRIV
+ 	bool
++	default y
+ 
+ config CFG80211
+ 	tristate "cfg80211 - wireless configuration API"
+--- a/drivers/base/Kconfig
++++ b/drivers/base/Kconfig
+@@ -242,7 +242,7 @@
+ 
+ config DMA_SHARED_BUFFER
+ 	bool
+-	default n
++	default y
+ 	select ANON_INODES
+ 	help
+ 	  This option enables the framework for buffer-sharing between
+--- a/sound/core/rawmidi.c
++++ b/sound/core/rawmidi.c
+@@ -275,7 +275,7 @@
+ 		substream->active_sensing = 0;
+ 		if (mode & SNDRV_RAWMIDI_LFLG_APPEND)
+ 			substream->append = 1;
+-		substream->pid = get_pid(task_pid(current));
++		substream->pid = NULL; /* Yandex kernel: task_struct layout differs, do not touch current->pids */
+ 		rmidi->streams[substream->stream].substream_opened++;
+ 	}
+ 	substream->use_count++;

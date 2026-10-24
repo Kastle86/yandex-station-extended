@@ -23,7 +23,7 @@
 | Температура | один `soc_thermal`, idle ~42 °C, пассивное охлаждение |
 | Звук | ALSA card0 `AML-AUGESOUND`, усилитель **NTP8910A** (I2C), микрофоны **PDM** |
 | Радио | **Unisoc UWE5621** (Wi-Fi 2.4/5 + BT combo, SDIO) |
-| Сеть | только Wi-Fi (`wlan0`) + Wi-Fi Direct (`p2p0`), Ethernet нет |
+| Сеть | только Wi-Fi (`wlan0`) + Wi-Fi Direct (`p2p0`); Ethernet — через USB-хаб в [режиме USB Host](../platform/usb-host.md) |
 
 !!! note "Архитектурная особенность"
     Ядро **64-битное** (aarch64), а весь userspace — **32-битный armhf**. Свой софт

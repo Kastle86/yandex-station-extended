@@ -20,12 +20,35 @@
 
 ---
 
-## 🧩 Скомпилированные модули ядра Linux 4.9.68 (каталог `contrib/modules/`)
+## 🧩 Модули ядра для USB Host (каталог `contrib/modules/`)
 
-Модули ядра с вермаджиком `vermagic=4.9.y SMP preempt mod_unload aarch64` для включения поддержки периферии в режиме USB Host:
+Собраны под ядро Яндекса Станции Лайт (`4.9.68`, `vermagic=4.9.y SMP preempt mod_unload aarch64`)
+скриптом [`build/build-modules.sh`](https://github.com/Marker284/yandex-station-extended/blob/main/contrib/modules/build/build-modules.sh),
+проверены на живом устройстве. Ставятся вместе со скриптами [`contrib/otg/`](https://github.com/Marker284/yandex-station-extended/tree/main/contrib/otg)
+через `install.sh` — подробно в гайде [USB Host (OTG)](../docs/platform/usb-host.md).
 
 | Модуль | Назначение | Прямая ссылка на скачивание |
 |---|---|---|
+| **`sd_mod.ko`** | SCSI-диски: без него usb-storage не даёт `/dev/sda` | [Скачать sd_mod.ko](https://github.com/Marker284/yandex-station-extended/raw/main/contrib/modules/sd_mod.ko) |
+| **`usb-storage.ko`** | USB-флешки, SSD/HDD, картридеры | [Скачать usb-storage.ko](https://github.com/Marker284/yandex-station-extended/raw/main/contrib/modules/usb-storage.ko) |
+| **`uas.ko`** | USB Attached SCSI для быстрых дисков | [Скачать uas.ko](https://github.com/Marker284/yandex-station-extended/raw/main/contrib/modules/uas.ko) |
+| **`r8152.ko`** | Ethernet Realtek RTL8152/RTL8153 | [Скачать r8152.ko](https://github.com/Marker284/yandex-station-extended/raw/main/contrib/modules/r8152.ko) |
+| **`ax88179_178a.ko`** | Ethernet ASIX AX88179 (1G) | [Скачать ax88179_178a.ko](https://github.com/Marker284/yandex-station-extended/raw/main/contrib/modules/ax88179_178a.ko) |
+| **`asix.ko`** | Ethernet ASIX AX8817x (100M) | [Скачать asix.ko](https://github.com/Marker284/yandex-station-extended/raw/main/contrib/modules/asix.ko) |
+| **`cdc_ether.ko`** | CDC Ethernet-адаптеры и модемы | [Скачать cdc_ether.ko](https://github.com/Marker284/yandex-station-extended/raw/main/contrib/modules/cdc_ether.ko) |
+| **`cdc_ncm.ko`** | CDC NCM-адаптеры | [Скачать cdc_ncm.ko](https://github.com/Marker284/yandex-station-extended/raw/main/contrib/modules/cdc_ncm.ko) |
+| **`usbnet.ko`** | база USB-сетевых драйверов | [Скачать usbnet.ko](https://github.com/Marker284/yandex-station-extended/raw/main/contrib/modules/usbnet.ko) |
+| **`mii.ko`** | MII-библиотека для сетевых драйверов | [Скачать mii.ko](https://github.com/Marker284/yandex-station-extended/raw/main/contrib/modules/mii.ko) |
+| **`snd-usb-audio.ko`** | USB-звуковые карты и ЦАП | [Скачать snd-usb-audio.ko](https://github.com/Marker284/yandex-station-extended/raw/main/contrib/modules/snd-usb-audio.ko) |
+| **`snd-usbmidi-lib.ko`** | USB MIDI (зависимость snd-usb-audio) | [Скачать snd-usbmidi-lib.ko](https://github.com/Marker284/yandex-station-extended/raw/main/contrib/modules/snd-usbmidi-lib.ko) |
+| **`snd-rawmidi.ko`** | ALSA rawmidi (патч: без `current->pids`) | [Скачать snd-rawmidi.ko](https://github.com/Marker284/yandex-station-extended/raw/main/contrib/modules/snd-rawmidi.ko) |
+| **`snd-hwdep.ko`** | ALSA hwdep | [Скачать snd-hwdep.ko](https://github.com/Marker284/yandex-station-extended/raw/main/contrib/modules/snd-hwdep.ko) |
+
+> ⚠️ **Старые модули удалены.** Первая версия этого каталога (модули под чужие заголовки ядра)
+> роняла колонку при подключении Ethernet и при воспроизведении звука. `ext4`/`exfat` в ядре для
+> этой прошивки собрать безопасно нельзя — для exFAT/NTFS используйте `yse install exfat-fuse ntfs-3g`.
+
+---|---|---|
 | **`usb-storage.ko`** | Драйвер USB-флешек и внешних дисков | [Скачать usb-storage.ko](https://github.com/Marker284/yandex-station-extended/raw/main/contrib/modules/usb-storage.ko) |
 | **`uas.ko`** | Протокол USB Attached SCSI для скоростных дисков | [Скачать uas.ko](https://github.com/Marker284/yandex-station-extended/raw/main/contrib/modules/uas.ko) |
 | **`snd-usb-audio.ko`**| Драйвер внешних звуковых карт и USB-ЦАП | [Скачать snd-usb-audio.ko](https://github.com/Marker284/yandex-station-extended/raw/main/contrib/modules/snd-usb-audio.ko) |

@@ -1,0 +1,25 @@
+#!/bin/sh
+# Enable USB host (OTG) on the Type-C port at boot. See /data/otg/otg-host.sh.
+# Bootloop guard: if the previous attempt hung the box, skip once.
+# Disable permanently: touch /data/otg/disable
+D=/data/otg
+case "$1" in
+start)
+  [ -x $D/otg-host.sh ] || exit 0
+  [ -e $D/disable ] && { echo "otg-host: disabled"; exit 0; }
+  if [ -e $D/boot-pending ]; then
+    echo "otg-host: previous attempt did not finish, skipping this boot" | tee $D/last.log
+    rm -f $D/boot-pending; sync; exit 0
+  fi
+  (
+    sleep 15
+    touch $D/boot-pending; sync
+    $D/otg-host.sh > $D/last.log 2>&1
+    sleep 10
+    $D/usb-mount.sh >> $D/last.log 2>&1
+    sync; sleep 20
+    rm -f $D/boot-pending; sync
+  ) >/dev/null 2>&1 &
+  ;;
+esac
+exit 0

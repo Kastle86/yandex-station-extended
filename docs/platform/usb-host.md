@@ -1,127 +1,184 @@
 # Режим USB Host (OTG) и подключение периферии
 
-Практическое руководство по переводу порта Type-C Яндекс Станций в режим **USB Host (OTG)**, подключению внешней периферии (USB-аудиокарт, сетевых адаптеров Ethernet, флешек) через активный разветвитель питания и загрузке необходимых модулей ядра.
+Как перевести порт Type-C **Станции Лайт** в режим **USB Host** и подключить через хаб
+с питанием SSD/флешки, USB-Ethernet и USB-звуковую карту. Всё делается в рантайме:
+ядро, U-Boot и загрузчик **не трогаются**, перезагрузка без скрипта возвращает заводской режим.
 
-Все скомпилированные модули ядра (`.ko`) уже подготовлены и доступны для загрузки в папке репозитория:  
-👉 **[Каталог модулей `contrib/modules/`](https://github.com/Marker284/yandex-station-extended/tree/main/contrib/modules)**
+Готовые файлы: 👉 **[`contrib/otg/`](https://github.com/Marker284/yandex-station-extended/tree/main/contrib/otg)**
+(скрипты) и **[`contrib/modules/`](https://github.com/Marker284/yandex-station-extended/tree/main/contrib/modules)**
+(модули ядра).
 
----
+!!! success "Проверено на живом устройстве"
+    Станция Лайт (`yandex,station-micro`, Micro v1.2), ядро 4.9.68, прошивка от 19.10.2026.
+    Хаб Fresco Logic с питанием + SSD Patriot Burst Elite 240G (мост RTL9201), Ethernet RTL8153,
+    USB-звук C&T, — всё определяется на 480 Мбит/с, переживает перезагрузку, чтение SSD ~32 МБ/с.
 
-## ⚡ Аппаратные особенности и требования к подключению
-
-1. **Разъём Type-C — это вход питания (Sink / UFP):**
-   * На системной плате Станции Лайт нет повышающего преобразователя питания (Boost). Колонка **не умеет выдавать 5V** на разъём Type-C.
-   * Если просто воткнуть обычный пассивный OTG-переходник, колонка мгновенно обесточится и выключится.
-2. **Как правильно подключать (Обязательное условие):**
-   * Для подключения любых USB-устройств требуется **активный USB-C OTG Y-кабель** или **USB-C хаб с поддержкой сквозного питания (Pass-Through Power)**.
-   * Блок питания 5V вставляется во вход питания хаба, а сам хаб подключается в порт Type-C Станции. Питание получают и колонка, и периферия, а линии данных D+/D- идут в USB-устройства.
-
----
-
-## 📦 Скомпилированные модули ядра (Linux 4.9.68 `aarch64`)
-
-В штатном ядре Яндекса драйверы внешних USB-устройств выключены. Мы собрали статические модули с совпадающим вермаджиком (`vermagic=4.9.y SMP preempt mod_unload aarch64`):
-
-### 1. Накопители и флешки (Mass Storage):
-* [📥 `usb-storage.ko`](https://github.com/Marker284/yandex-station-extended/raw/main/contrib/modules/usb-storage.ko) — драйвер обычных USB-флешек и жестких дисков.
-* [📥 `uas.ko`](https://github.com/Marker284/yandex-station-extended/raw/main/contrib/modules/uas.ko) — быстрый протокол USB Attached SCSI.
-
-### 2. Внешние звуковые карты и ЦАП:
-* [📥 `snd-usb-audio.ko`](https://github.com/Marker284/yandex-station-extended/raw/main/contrib/modules/snd-usb-audio.ko) — основной драйвер USB Audio Class 1.0 / 2.0.
-* [📥 `snd-hwdep.ko`](https://github.com/Marker284/yandex-station-extended/raw/main/contrib/modules/snd-hwdep.ko) — зависимость подсистемы ALSA.
-* [📥 `snd-rawmidi.ko`](https://github.com/Marker284/yandex-station-extended/raw/main/contrib/modules/snd-rawmidi.ko) / [📥 `snd-usbmidi-lib.ko`](https://github.com/Marker284/yandex-station-extended/raw/main/contrib/modules/snd-usbmidi-lib.ko) — поддержка MIDI-устройств.
-
-### 3. Проводные сетевые адаптеры (Ethernet):
-* [📥 `usbnet.ko`](https://github.com/Marker284/yandex-station-extended/raw/main/contrib/modules/usbnet.ko) + [📥 `mii.ko`](https://github.com/Marker284/yandex-station-extended/raw/main/contrib/modules/mii.ko) — базовый сетевой стек USB.
-* [📥 `r8152.ko`](https://github.com/Marker284/yandex-station-extended/raw/main/contrib/modules/r8152.ko) — адаптеры Realtek RTL8152 / RTL8153 (самые распространенные в USB-хабах).
-* [📥 `asix.ko`](https://github.com/Marker284/yandex-station-extended/raw/main/contrib/modules/asix.ko) — чипы Asix AX8817x (100 Мбит/с).
-* [📥 `ax88179_178a.ko`](https://github.com/Marker284/yandex-station-extended/raw/main/contrib/modules/ax88179_178a.ko) — гигабитные чипы Asix AX88179.
-* [📥 `cdc_ether.ko`](https://github.com/Marker284/yandex-station-extended/raw/main/contrib/modules/cdc_ether.ko) / [📥 `cdc_ncm.ko`](https://github.com/Marker284/yandex-station-extended/raw/main/contrib/modules/cdc_ncm.ko) — стандартные CDC-адаптеры и модемы.
+!!! danger "Модули из первой версии этого гайда были битыми"
+    Ранее здесь лежали модули с подписью `4.9.y`, собранные под **чужие** заголовки ядра.
+    Они роняли колонку: `r8152`/`usbnet` — kernel oops в `register_netdevice` при появлении
+    `eth0` (колонка зависает и уходит в `watchdog_reboot`), `snd-usb-audio` — oops при открытии
+    PCM. Если у вас есть `/etc/init.d/S98usb_modules` — удалите его (это делает `install.sh`).
+    Менять `otg_device` в U-Boot тоже **не нужно** — это ничего не даёт (см. ниже).
 
 ---
 
-## 🚀 Установка модулей и переключение режима
+## ⚡ Железо и подключение
 
-### Шаг 1. Переключение контроллера в режим Host (U-Boot)
+* Type-C на Станции — **только вход питания** (sink). Повышающего преобразователя нет,
+  5 В наружу колонка не отдаёт: пассивный OTG-переходник просто не заработает.
+* Нужен **USB-C хаб с Power Delivery / pass-through** (или активный OTG Y-кабель):
+  блок питания — в PD-вход хаба, хаб — в Станцию. Хаб питает и колонку, и периферию,
+  а линии D+/D- идут к контроллеру колонки.
+* Работает только **USB 2.0** (480 Мбит/с): USB3-PHY на этой плате не разведён.
 
-По умолчанию в загрузчике зашит параметр `otg_device=1`, который принудительно удерживает USB-контроллер в режиме клиента (Slave/Device).
+---
 
-Чтобы разрешить режим Хоста, измените переменную окружения `initargs` в U-Boot:
+## 🔬 Почему «просто включить OTG» не работало
+
+Порт Type-C — это **порт 1 USB2-PHY** (`usb2phy@ffe09000`). Он один, а контроллеров два:
+
+| Контроллер | Что это | Кому отдан порт по умолчанию |
+|---|---|---|
+| `dwc2_a` (`ff400000`, драйвер `dwc_otg`) | device/gadget | ✅ ему (`usb_r0.u2d_act = 1`) |
+| `dwc3` → `xhci-hcd` (`ff500000`) | host | ❌ его USB2-порт 1 **отключён** в glue-регистре (`usb_r1.u3h_host_u2_port_disable = 0x2`) |
+
+У узла `usb3phy` в device-tree `otg = <0>` — переключения по ID-пину нет (а ID-пина у Type-C-sink и
+нет). Параметр `otg_device=1` в cmdline влияет только на `dwc2` (форсирует SLAVE), к хосту
+отношения не имеет. xHCI при этом стартует, но на «пустом» порту: при попытке поднять его
+руками он видит мусорное full-speed устройство и умирает с
+`xHCI host not responding to stop endpoint command … HC died`.
+
+Переключение — 4 регистра (база `0xffe09000`, раскладка как в Amlogic `phy-aml-new-usb3.c`, `set_mode()`):
+
+| Адрес | Регистр | Было | Стало | Смысл |
+|---|---|---|---|---|
+| `0xffe09084` | `usb_r1` | `0x01002000` | `0x01000000` | включить USB2-порт 1 у xHCI |
+| `0xffe09080` | `usb_r0` | `0x8000006A` | `0x0000006A` | `u2d_act=0`: порт → xHCI |
+| `0xffe09090` | `usb_r4` | `0x00000002` | `0x00000000` | `p21_SLEEPM0=0` |
+| `0xffe09020` | `u2p_r0` (порт 1) | `0x10252000` | `0x10252060` | подтяжки 15 кОм на D+/D- (роль хоста) |
+
+Порядок важен: отвязать `dwc2_a` (`dwc_otg/unbind`) и `xhci-hcd.0.auto` (`xhci-hcd/unbind`),
+записать регистры, снова привязать `xhci-hcd.0.auto`.
+
+!!! warning "Не отвязывайте `dwc3`"
+    `echo ff500000.dwc3 > /sys/bus/platform/drivers/dwc3/unbind` даёт kernel oops в
+    `dwc3_remove` (вендорский PHY без нужных ops). Перепривязывать нужно дочерний `xhci-hcd.0.auto`.
+
+---
+
+## 📦 Модули ядра
+
+В ядре Яндекса нет ни `usb-storage`, ни `sd_mod` (`CONFIG_BLK_DEV_SD` выключен — без него
+даже рабочий `usb-storage` не даст `/dev/sda`), ни сетевых USB-драйверов, ни `snd-usb-audio`.
+Встроены только хаб, HID (клавиатуры/мыши/геймпады), `cdc_acm` и `usbserial`.
+
+| Модуль | Для чего | Статус |
+|---|---|---|
+| `sd_mod`, `usb-storage`, `uas` | флешки, SSD/HDD, картридеры | ✅ |
+| `r8152` | Ethernet RTL8152/8153 (почти все хабы) | ✅ |
+| `ax88179_178a`, `asix` | Ethernet ASIX 1G / 100M | ✅ (собраны, железом не проверены) |
+| `cdc_ether`, `cdc_ncm`, `usbnet`, `mii` | CDC-адаптеры, модемы, база | ✅ |
+| `snd-usb-audio`, `snd-usbmidi-lib`, `snd-hwdep`, `snd-rawmidi` | USB-звук / ЦАП | ✅ |
+| `ext4`, `exfat`, `ntfs` в ядре | файловые системы | ❌ **нельзя**, см. ниже — используйте FUSE |
+
+### Почему модули сложно собрать правильно
+
+Исходников ядра Яндекса нет в открытом доступе. Подпись модулей должна быть `vermagic=4.9.y SMP preempt mod_unload aarch64`
+(именно `4.9.y`, хотя `uname -r` = `4.9.68`), но совпадения подписи мало — должны совпасть
+**структуры ядра**. Что пришлось учесть ([`build-modules.sh`](https://github.com/Marker284/yandex-station-extended/blob/main/contrib/modules/build/build-modules.sh)):
+
+1. База — Amlogic `buildroot-aml-4.9` (4.9.40) + stable-разница 4.9.40→4.9.68 для заголовков и нужных драйверов.
+2. Конфиг — ровно `/proc/config.gz` колонки + только новые `=m` ([`config.fragment`](https://github.com/Marker284/yandex-station-extended/blob/main/contrib/modules/build/config.fragment)).
+3. [`yandex-axg.patch`](https://github.com/Marker284/yandex-station-extended/blob/main/contrib/modules/build/yandex-axg.patch):
+    * `CONFIG_WIRELESS_EXT`/`WEXT_PRIV` — их включает вендорский Wi-Fi-драйвер, в чистом дереве они
+      пропадают, и `struct net_device` сдвигается (вероятная причина падения старых модулей);
+    * `CONFIG_AMLOGIC_PAGE_TRACE` — меняет `struct page` (`flags` делится на `s_flags`+`trace`) и `ZONES_PGOFF`;
+    * `KERNELVERSION = 4.9.y`;
+    * `snd-rawmidi`: не трогать `current->pids` (см. следующий пункт).
+4. **`struct task_struct` у Яндекса другая** (из Android/EAS-патчей): например `cred` по смещению
+   1776 вместо 1656, `mm` — 1184 вместо 1056 (сверено дизассемблированием живого ядра через `/dev/mem`).
+   Поэтому годятся только драйверы, которые **не обращаются к `current->…`** — все модули из
+   таблицы проверены на это. `ext4`/`jbd2` (`current->journal_info`) и `exfat` (`current->cred`)
+   по этой причине **не поставляются**: `exfat` проверочно уронил ядро при `mount`.
+
+Сборка воспроизводима (повторная сборка с нуля даёт байт-в-байт те же `.ko`), контрольные суммы — `contrib/modules/SHA256SUMS`.
+
+---
+
+## 🚀 Установка
+
+1. Скопируйте `contrib/otg` и `contrib/modules` на колонку и запустите установщик:
+
+    ```sh
+    # на ПК, из клона репозитория
+    scp -P 2222 -r contrib/otg contrib/modules root@<ip>:/data/otg-src/
+    # на колонке
+    sh /data/otg-src/otg/install.sh
+    ```
+
+    Установщик проверит модель и ядро, разложит файлы в `/data/otg/`, поставит
+    `/etc/init.d/S97otg-host` и уберёт старый `S98usb_modules`.
+
+2. Для exFAT/NTFS поставьте FUSE-драйверы из Entware (FUSE в ядре есть):
+
+    ```sh
+    yse install exfat-fuse ntfs-3g
+    ```
+
+3. Перезагрузите колонку. Через ~30 с после старта:
+
+    ```sh
+    cat /data/otg/last.log        # что сделал скрипт
+    ls /sys/bus/usb/devices/      # 1-1, 1-1.x … — устройства хаба
+    ```
+
+### Что делает автозапуск
+
+`S97otg-host` через 15 с после загрузки запускает `/data/otg/otg-host.sh`
+(драйверы → переключение порта), затем `/data/otg/usb-mount.sh`.
+
+* **Защита от бутлупа:** перед переключением пишется флаг `/data/otg/boot-pending`, после
+  успешного старта он удаляется. Если колонка зависла и перезагрузилась — флаг остался, и
+  следующая загрузка пройдёт **без** OTG.
+* **Выключить насовсем:** `touch /data/otg/disable` и перезагрузка.
+* После переключения ADB/gadget по USB не работает — порт занят хостом. SSH по Wi-Fi работает как обычно.
+
+---
+
+## 🎯 Использование
+
+**Диски.** Все разделы монтируются в `/tmp/usb/<метка>` (exFAT и NTFS — через FUSE, FAT — ядром):
 
 ```sh
-# 1. Сделайте бэкап окружения
-/usr/bin/fw_printenv > /data/uboot_env_backup.txt
-
-# 2. Выставите otg_device=0
-NEW_ARGS="ubi.mtd=system root=ubi0:rootfs rootfstype=ubifs ubi.mtd=bkupgrade otg_device=0 console=ttyS0,115200 no_console_suspend printk_no_block ramoops.pstore_en=1 ramoops.record_size=0x8000 ramoops.console_size=0x4000"
-/usr/bin/fw_setenv initargs "$NEW_ARGS"
-
-# 3. Проверьте результат
-/usr/bin/fw_printenv initargs
+/data/otg/usb-mount.sh        # смонтировать всё (например, после подключения флешки)
+/data/otg/usb-mount.sh -u     # отмонтировать всё перед отключением
 ```
 
-### Шаг 2. Загрузка модулей на колонку
+**Ethernet.** Интерфейс `eth0` появляется сам, штатный `dhcpcd` получает адрес, как только
+вставлен кабель.
 
-Скачайте скомпилированные модули из репозитория и положите их в каталог `/data/modules/`:
-
-```sh
-mkdir -p /data/modules
-# Скопируйте .ko файлы в /data/modules/
-```
-
-### Шаг 3. Настройка автозагрузки модулей при старте
-
-Создайте исполняемый скрипт `/etc/init.d/S98usb_modules` (сделав предварительно `mount -o remount,rw /`):
+**Звук.** USB-карта — `card 1`:
 
 ```sh
-cat << 'EOF' > /etc/init.d/S98usb_modules
-#!/bin/sh
-MOD_DIR="/data/modules"
-if [ -d "$MOD_DIR" ]; then
-    # Накопители
-    insmod $MOD_DIR/usb-storage.ko 2>/dev/null
-    insmod $MOD_DIR/uas.ko 2>/dev/null
-
-    # Звук (ALSA USB Audio)
-    insmod $MOD_DIR/snd-hwdep.ko 2>/dev/null
-    insmod $MOD_DIR/snd-rawmidi.ko 2>/dev/null
-    insmod $MOD_DIR/snd-usbmidi-lib.ko 2>/dev/null
-    insmod $MOD_DIR/snd-usb-audio.ko 2>/dev/null
-
-    # Сеть (Ethernet)
-    insmod $MOD_DIR/mii.ko 2>/dev/null
-    insmod $MOD_DIR/usbnet.ko 2>/dev/null
-    insmod $MOD_DIR/cdc_ether.ko 2>/dev/null
-    insmod $MOD_DIR/r8152.ko 2>/dev/null
-    insmod $MOD_DIR/asix.ko 2>/dev/null
-    insmod $MOD_DIR/ax88179_178a.ko 2>/dev/null
-fi
-exit 0
-EOF
-chmod +x /etc/init.d/S98usb_modules
+cat /proc/asound/cards
+aplay -D hw:1,0 -f S24_3LE -r 48000 -c 2 file.wav    # формат смотрите в /proc/asound/card1/stream0
 ```
 
 ---
 
-## 🎯 Проверка работы периферии
+## 🧯 Диагностика
 
-После перезагрузки или ручной загрузки модулей (`/etc/init.d/S98usb_modules`):
+| Симптом | Причина |
+|---|---|
+| `invalid module format`, в dmesg `version magic '4.9.68 …' should be '4.9.y …'` | модуль собран без `KERNELVERSION = 4.9.y` |
+| Колонка зависает при подключении хаба, `reboot_reason = watchdog_reboot` | загружены старые модули (`S98usb_modules`) |
+| `xHCI host not responding … HC died` | xHCI перепривязан без переключения регистров |
+| `mount: … Invalid argument` на разделе | exFAT/NTFS — нужен `exfat-fuse`/`ntfs-3g` |
+| `fuse: mount failed: Device or resource busy` | раздел держит упавший ядерный `mount` — только перезагрузка |
 
-* **Проверка флешки:**
-  ```sh
-  cat /proc/partitions
-  # Появится устройство sda / sda1
-  mkdir -p /mnt/usb
-  mount /dev/sda1 /mnt/usb
-  ```
-* **Проверка аудиокарты:**
-  ```sh
-  cat /proc/asound/cards
-  # Появится card 1 [USB Audio]: USB-Audio ...
-  ```
-* **Проверка проводного интернета (Ethernet):**
-  ```sh
-  ip link
-  # Появится интерфейс eth0
-  udhcpc -i eth0
-  ```
+Ловить падения удобно, читая лог ядра по сети в реальном времени — после oops колонка
+часто виснет, а `pstore` чистится при загрузке:
+
+```sh
+ssh -p 2222 root@<ip> 'cat /proc/kmsg' | tee kmsg.log
+```
