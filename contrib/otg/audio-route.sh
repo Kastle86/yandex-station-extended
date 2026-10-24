@@ -2,15 +2,19 @@
 # Route all speaker playback to a USB sound card (or back to the built-in amplifier).
 # Every player on the Station (Alice TTS, music, sounds, AirPlay/Bluetooth) uses ALSA "default":
 #   default -> softvol "Master" -> dmix_spk -> hw:0,0 (NTP8910A amp)
-# Only the dmix_spk slave is swapped, so the Master volume (buttons, "Алиса, громче") keeps working.
-#   audio-route.sh usb       to the first USB-Audio card
-#   audio-route.sh speaker   back to the built-in speaker
-#   audio-route.sh auto      usb if a USB card is present, else speaker (boot / mdev hotplug)
+# Only dmix_spk(_plug) is swapped, so the Master volume (buttons, "Алиса, громче") keeps working.
+# Alice's volume scale is tuned for the built-in amp; a USB DAC drives headphones at full line
+# level, so on USB the plug stage also applies a fixed attenuation (default -20 dB).
+#   audio-route.sh usb        to the first USB-Audio card
+#   audio-route.sh speaker    back to the built-in speaker
+#   audio-route.sh auto       usb if a USB card is present, else speaker (boot / mdev hotplug)
+#   audio-route.sh gain [dB]  show / set the USB attenuation, e.g. "gain -25" (0 = none)
 #   audio-route.sh status
 # touch /data/otg/audio-no-usb  makes "auto" always choose the speaker.
 D=/data/otg
 CONF=/etc/asound.conf
 ORIG=$D/asound.conf.orig
+GAINF=$D/audio-usb-gain-db
 
 usb_card(){
 	for c in /proc/asound/card[0-9]*; do
@@ -30,10 +34,12 @@ usb_params(){
 
 current(){ grep -o 'pcm "hw:[^"]*"' $CONF | tail -1 | cut -d'"' -f2; }
 
-write_conf(){  # $1 = dmix_spk block
+blocks(){ sed -n '/^pcm.dmix_spk_plug {/,/^}/p; /^pcm.dmix_spk {/,/^}/p' "$1"; }
+
+write_conf(){  # $1 = dmix_spk_plug + dmix_spk blocks
 	[ -f $ORIG ] || cp -p $CONF $ORIG
 	tmp=/tmp/asound.conf.$$
-	{ sed '/^pcm.dmix_spk {/,/^}/d' $ORIG; printf '%s\n' "$1"; } > $tmp
+	{ sed '/^pcm.dmix_spk_plug {/,/^}/d; /^pcm.dmix_spk {/,/^}/d' $ORIG; printf '%s\n' "$1"; } > $tmp
 	cmp -s $tmp $CONF && { rm -f $tmp; return 0; }
 	rw=0; awk '$2=="/"{print $4}' /proc/mounts | grep -q '^ro' && { mount -o remount,rw / && rw=1; }
 	cp $tmp $CONF.new && mv $CONF.new $CONF
@@ -46,7 +52,8 @@ write_conf(){  # $1 = dmix_spk block
 }
 
 to_speaker(){
-	write_conf "$(sed -n '/^pcm.dmix_spk {/,/^}/p' $ORIG 2>/dev/null || sed -n '/^pcm.dmix_spk {/,/^}/p' $CONF)"
+	[ -f $ORIG ] || cp -p $CONF $ORIG
+	write_conf "$(blocks $ORIG)"
 	echo "audio -> speaker (hw:0,0)"
 }
 
@@ -54,8 +61,24 @@ to_usb(){
 	id=$(usb_card) || { echo "no USB sound card"; return 1; }
 	set -- $(usb_params "$id")
 	fmt=${1:-S16_LE}; ch=${2:-2}; rate=${3:-48000}
+	db=$(cat $GAINF 2>/dev/null || echo -20)
+	# 10^(dB/20) without libm (busybox awk has no exp/log): whole dB, 1 dB = x1.12202
+	g=$(awk -v d="$db" 'BEGIN{d=int(d<0?d-0.5:d+0.5); g=1; for(i=0;i<(d<0?-d:d);i++) g=(d<0)?g/1.122018454:g*1.122018454; printf "%.4f", g}')
+	[ -n "$g" ] || { echo "cannot compute gain for '$db' dB, route unchanged"; return 1; }
+	if [ "$ch" = 1 ]; then
+		tt="  ttable.0.0 $(awk -v g=$g 'BEGIN{print g/2}')
+  ttable.1.0 $(awk -v g=$g 'BEGIN{print g/2}')"
+	else
+		tt="  ttable.0.0 $g
+  ttable.1.1 $g"
+	fi
 	# ipc_key differs from the speaker dmix (1024), so a stream still open on the old route cannot clash.
-	write_conf "pcm.dmix_spk {
+	write_conf "pcm.dmix_spk_plug {
+  type plug
+  slave.pcm \"dmix_spk\"
+$tt
+}
+pcm.dmix_spk {
   type dmix
   ipc_key 1025
   ipc_key_add_uid false
@@ -69,7 +92,7 @@ to_usb(){
     period_size 960
   }
 }"
-	echo "audio -> USB card $id ($fmt, ${ch}ch, ${rate} Hz)"
+	echo "audio -> USB card $id ($fmt, ${ch}ch, ${rate} Hz, ${db} dB)"
 }
 
 case "${1:-status}" in
@@ -77,6 +100,12 @@ case "${1:-status}" in
 	speaker) to_speaker ;;
 	auto)    [ "${ACTION:-}" = remove ] && sleep 1   # mdev: let the card leave /proc/asound first
 	         if [ ! -e $D/audio-no-usb ] && usb_card >/dev/null; then to_usb; else to_speaker; fi ;;
-	status)  echo "route: $(current)"; echo "usb card: $(usb_card || echo none)" ;;
-	*)       echo "usage: $0 usb|speaker|auto|status"; exit 1 ;;
+	gain)    if [ -n "${2:-}" ]; then
+	         	echo "$2" | grep -qE '^-?[0-9]+$' || { echo "gain: whole number of dB, e.g. -20"; exit 1; }
+	         	echo "$2" > $GAINF
+	         	case "$(current)" in hw:CARD=*) to_usb ;; esac
+	         fi
+	         echo "usb gain: $(cat $GAINF 2>/dev/null || echo -20) dB" ;;
+	status)  echo "route: $(current)"; echo "usb card: $(usb_card || echo none)"; echo "usb gain: $(cat $GAINF 2>/dev/null || echo -20) dB" ;;
+	*)       echo "usage: $0 usb|speaker|auto|gain [dB]|status"; exit 1 ;;
 esac
