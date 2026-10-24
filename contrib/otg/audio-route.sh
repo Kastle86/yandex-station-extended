@@ -39,7 +39,11 @@ blocks(){ sed -n '/^pcm.dmix_spk_plug {/,/^}/p; /^pcm.dmix_spk {/,/^}/p' "$1"; }
 write_conf(){  # $1 = dmix_spk_plug + dmix_spk blocks
 	[ -f $ORIG ] || cp -p $CONF $ORIG
 	tmp=/tmp/asound.conf.$$
-	{ sed '/^pcm.dmix_spk_plug {/,/^}/d; /^pcm.dmix_spk {/,/^}/d' $ORIG; printf '%s\n' "$1"; } > $tmp
+	# softvol creates its control on the card of its slave unless told otherwise; with a USB slave
+	# that would be a separate "Master" on the USB card, while Alice and the buttons drive card 0.
+	{ sed '/^pcm.dmix_spk_plug {/,/^}/d; /^pcm.dmix_spk {/,/^}/d
+	       /^pcm.soft_volume {/,/^}/{/name "Master Playback Volume"/a\    card 0
+	       }' $ORIG; printf '%s\n' "$1"; } > $tmp
 	cmp -s $tmp $CONF && { rm -f $tmp; return 0; }
 	rw=0; awk '$2=="/"{print $4}' /proc/mounts | grep -q '^ro' && { mount -o remount,rw / && rw=1; }
 	cp $tmp $CONF.new && mv $CONF.new $CONF
