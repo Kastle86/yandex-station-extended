@@ -49,6 +49,9 @@ theme:
         icon: material/weather-sunny
         name: Тёмная тема
 
+extra_javascript:
+  - javascripts/toc-tabs.js
+
 extra_css:
   - stylesheets/extra.css
 
